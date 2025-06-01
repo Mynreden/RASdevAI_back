@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy import and_
 from sqlalchemy.sql import func
 
 from ..schemas import StockResponse, MiniChartData
@@ -53,12 +54,19 @@ class StockService:
 
     async def fetch_price_data(self, company_ids: list[int], days: int = 14) -> list[StockPrice]:
         today = datetime.now().date()
-        week_ago = today - timedelta(days=days)
+        start_date = today - timedelta(days=days*2)
 
         stmt = (
             select(StockPrice)
-            .where(StockPrice.company_id.in_(company_ids), StockPrice.date >= week_ago)
-            .order_by(StockPrice.date.asc())
+            .where(
+                and_(
+                    StockPrice.company_id.in_(company_ids),
+                    StockPrice.date >= start_date,
+                    StockPrice.date <= today
+                )
+            )
+            .order_by(StockPrice.company_id.asc(), StockPrice.date.asc())
+            .limit(days)
         )
         result = await self.db.execute(stmt)
         return result.scalars().all()

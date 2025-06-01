@@ -5,7 +5,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.cors import CORSMiddleware
 import uvicorn
 from app.middlewares import register_middlewares
-from app.controllers import StockController, NewsController, LLMController, CompanyController, FinancialDataController
+from app.controllers import StockController, NewsController, LLMController, CompanyController, FinancialDataController, LSTMForecastController
 from dotenv import load_dotenv
 from .database import DBService
 from .core import ConfigService, get_config_service
@@ -46,6 +46,8 @@ company_controller = CompanyController()
 app.include_router(company_controller.get_router())
 financial_data_controller = FinancialDataController()
 app.include_router(financial_data_controller.get_router())
+lstm_forecast_controller = LSTMForecastController()
+app.include_router(lstm_forecast_controller.get_router())
 
 # @app.on_event("startup")
 # async def on_startup():
