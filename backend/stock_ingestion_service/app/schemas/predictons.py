@@ -9,3 +9,6 @@ class LSTMDayRequest(BaseModel):
 class LSTMForecastResponse(BaseModel):
     forecast_days: int
     predicted_prices: List[float]
+
+class LSTMForecastResponseMonth(BaseModel):
+    predicted_price: float

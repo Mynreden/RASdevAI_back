@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..core import config_service, get_config_service
 from ..services import ForecastService, get_forecast_service
-from ..schemas import LSTMForecastResponse
+from ..schemas import LSTMForecastResponse, LSTMForecastResponseMonth
 import traceback
 
 class LSTMForecastController:
@@ -24,6 +24,17 @@ class LSTMForecastController:
             except Exception as e:
                 error_trace = traceback.format_exc()
                 raise HTTPException(status_code=500, detail=f"Error predicting for {ticker}:\n{str(e)}\n{error_trace}")
-
+        
+        @self.router.get("/monthly/{ticker}", response_model=LSTMForecastResponseMonth)
+        async def forecast_price_monthly(
+            ticker: str,
+            service: ForecastService = Depends(get_forecast_service)
+        ):
+            try:
+                return await service.forecast_price_monthly(ticker)
+            except Exception as e:
+                error_trace = traceback.format_exc()
+                raise HTTPException(status_code=500, detail=f"Error predicting for {ticker}:\n{str(e)}\n{error_trace}")
+        
     def get_router(self):
         return self.router
