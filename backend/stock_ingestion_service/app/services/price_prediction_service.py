@@ -11,10 +11,11 @@ from ..database import get_db
 from ..models import StockPrice, News
 from .stock_service import StockService
 from .news_service import NewsService
-
+import os
 
 class ForecastService:
     def __init__(self, db):
+        self.ML_SERVICE_URL = "https://5d10-46-34-194-42.ngrok-free.app/lstm-day"
         self.db = db
         self.stock_service = StockService(db)
         self.news_service = NewsService(db)
@@ -55,7 +56,7 @@ class ForecastService:
 
             payload = LSTMDayRequest(ticker=ticker, days=merged_days, forecast_days=forecast_days).dict()
             async with httpx.AsyncClient() as client:
-                response = await client.post("https://5d10-46-34-194-42.ngrok-free.app/lstm-day", json=payload)
+                response = await client.post(self.ML_SERVICE_URL, json=payload)
 
             if response.status_code != 200:
                 raise HTTPException(status_code=500, detail=f"LSTM model error: {response.text}")

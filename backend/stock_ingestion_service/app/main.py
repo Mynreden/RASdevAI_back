@@ -20,7 +20,7 @@ load_dotenv(dotenv_path)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     config_service = get_config_service()
-    rabbit_service =get_rabbit_service(config_service=config_service)
+    rabbit_service = get_rabbit_service(config_service=config_service)
 
     app.state.rabbit_service = rabbit_service
 

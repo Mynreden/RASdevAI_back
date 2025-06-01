@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+
+from ..core import config_service, get_config_service
 from ..services import ForecastService, get_forecast_service
 from ..schemas import LSTMForecastResponse
 import traceback
@@ -10,6 +12,7 @@ class LSTMForecastController:
         self.register_routes()
 
     def register_routes(self):
+        config_service =  get_config_service()
         @self.router.get("/{ticker}", response_model=LSTMForecastResponse)
         async def forecast_price(
             ticker: str,
