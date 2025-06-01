@@ -7,9 +7,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-from ..models import News, StockPrice, Company
+from ..models import News, StockPrice, Company, FinancialData
 
-from ..schemas import NewsFromRabbit, StocksFromRabbit
+from ..schemas import NewsFromRabbit, StocksFromRabbit, FinancialDataFromRabbit
 from ..database import get_db_service
 from ..core import ConfigService, get_config_service
 
@@ -21,7 +21,8 @@ class RabbitService:
         self.password = config_service.get("RABBIT_PASSWORD")
         self.queue1_name = config_service.get("RABBIT_NEWS_QUEUE")
         self.queue2_name = config_service.get("RABBIT_STOCKS_QUEUE")
-        
+        self.queue3_name = config_service.get("RABBIT_FINANCIAL_QUEUE")
+
         self.connection: aio_pika.RobustConnection | None = None
         self.channel: aio_pika.Channel | None = None
         self.should_stop = asyncio.Event()
@@ -107,17 +108,46 @@ class RabbitService:
             except Exception as e:
                 print(f"❌ Failed to process message from {self.queue2_name}: {e}")
 
+    async def process_queue3_message(self, message: aio_pika.IncomingMessage):
+        async with message.process():
+            try:
+                payload = json.loads(message.body)
+                data = FinancialDataFromRabbit(**payload)
+
+                async with self.db_service.async_session_maker() as session:
+                    record = FinancialData(
+                        ticker=data.ticker,
+                        change_date=data.change_date,
+                        units=data.units,
+                        currency=data.currency,
+                        net_profit=data.net_profit,
+                        own_capital=data.own_capital,
+                        aggregate_assets=data.aggregate_assets,
+                        authorized_capital=data.authorized_capital,
+                        common_book_value=data.common_book_value,
+                        total_liabilities=data.total_liabilities,
+                        roe=data.roe,
+                        roa=data.roa,
+                    )
+                    session.add(record)
+                    await session.commit()
+                print(f"✅ Processed message from {self.queue3_name}")
+            except Exception as e:
+                print(f"❌ Failed to process message from {self.queue3_name}: {e}")
+
     async def start_consumers(self):
         await self.connect()
-        await self.channel.set_qos(prefetch_count=10)  # 🔥 вот сюда prefetch!
+        await self.channel.set_qos(prefetch_count=10)
 
         # queue1 = await self.channel.declare_queue(self.queue1_name, durable=True)
-        queue2 = await self.channel.declare_queue(self.queue2_name, durable=True)
+        # queue2 = await self.channel.declare_queue(self.queue2_name, durable=True)
+        queue3 = await self.channel.declare_queue(self.queue3_name, durable=True)
 
         # await queue1.consume(self.process_queue1_message)
-        await queue2.consume(self.process_queue2_message)
+        # await queue2.consume(self.process_queue2_message)
+        await queue3.consume(self.process_queue3_message)
 
-        print(f"📥 Consumers started for queues: {self.queue1_name}, {self.queue2_name}")
+        print(f"📥 Consumers started for queues: {self.queue1_name}, {self.queue2_name}, {self.queue3_name}")
 
     async def stop(self):
         self.should_stop.set()
