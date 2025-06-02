@@ -15,19 +15,25 @@ import os
 
 class ForecastService:
     def __init__(self, db):
-        self.ML_SERVICE_URL = "https://5d10-46-34-194-42.ngrok-free.app/lstm-day"
-        self.ML_SERVICE_MONTH_URL = "https://5d10-46-34-194-42.ngrok-free.app/lstm-month"
+        self.ML_SERVICE_URL = "https://7f90-46-34-195-97.ngrok-free.app/lstm-day"
+        self.ML_SERVICE_MONTH_URL = "https://7f90-46-34-195-97.ngrok-free.app/lstm-month"
         self.db = db
         self.stock_service = StockService(db)
         self.news_service = NewsService(db)
+        self.day_lstm_history_limit = 60
+        self.month_lstm_history_limit_in_days = 200
+        self.month_lstm_history_limit_in_month = 6
+
 
     async def forecast_price(self, ticker: str, forecast_days: int) -> LSTMForecastResponse:
         try:
             company_id = await self._get_company_id(ticker)
-            price_records = await self.stock_service.fetch_price_data([company_id], 60)
+            price_records = await self.stock_service.fetch_price_data([company_id], self.day_lstm_history_limit*2)
 
-            if not price_records or len(price_records) < 60:
+            if not price_records or len(price_records) < self.day_lstm_history_limit:
                 raise HTTPException(status_code=400, detail="Not enough price data")
+            
+            price_records = price_records[-self.day_lstm_history_limit:]
 
             news_records = await self.news_service.get_news_by_ticker(ticker, limit=200)
 
@@ -52,8 +58,8 @@ class ForecastService:
                     mean(sentiments["neutral"])
                 ])
 
-            if len(merged_days) < 60:
-                raise HTTPException(status_code=400, detail="Insufficient merged data for 60 days")
+            if len(merged_days) < self.day_lstm_history_limit:
+                raise HTTPException(status_code=400, detail=f"Insufficient merged data for {self.day_lstm_history_limit} days")
 
             payload = LSTMDayRequest(ticker=ticker, days=merged_days, forecast_days=forecast_days).dict()
             async with httpx.AsyncClient() as client:
@@ -75,9 +81,9 @@ class ForecastService:
         try:
             company_id = await self._get_company_id(ticker)
             
-            price_records = await self.stock_service.fetch_price_data([company_id], 240)
+            price_records = await self.stock_service.fetch_price_data([company_id], self.month_lstm_history_limit_in_days*2)
 
-            if not price_records or len(price_records) < 120:
+            if not price_records or len(price_records) < self.month_lstm_history_limit_in_days:
                 raise HTTPException(status_code=400, detail="Not enough price data for 6 months")
 
             news_records = await self.news_service.get_news_by_ticker(ticker, limit=1000)
@@ -125,12 +131,12 @@ class ForecastService:
                 monthly_data[month_key]["sentiments"]["negative"].extend(sentiments["negative"])
                 monthly_data[month_key]["sentiments"]["neutral"].extend(sentiments["neutral"])
 
-            sorted_months = sorted(monthly_data.keys())[-6:]
+            sorted_months = sorted(monthly_data.keys())[-self.month_lstm_history_limit_in_month:]
             
-            if len(sorted_months) < 6:
+            if len(sorted_months) < self.month_lstm_history_limit_in_month:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Insufficient monthly data: {len(sorted_months)} months, need 6 months"
+                    detail=f"Insufficient monthly data: {len(sorted_months)} months, need {self.month_lstm_history_limit_in_month} months"
                 )
 
             sequence = []
@@ -152,10 +158,10 @@ class ForecastService:
                     float(avg_monthly_volume)
                 ])
 
-            if len(sequence) != 6:
+            if len(sequence) != self.month_lstm_history_limit_in_month:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"Expected 6 monthly data points, got {len(sequence)}"
+                    detail=f"Expected {self.month_lstm_history_limit_in_month} monthly data points, got {len(sequence)}"
                 )
 
             payload = {

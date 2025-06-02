@@ -81,10 +81,10 @@ async def test_both_forecasts():
 
 if __name__ == "__main__":
     # Test both endpoints
-    #asyncio.run(test_both_forecasts())
+    asyncio.run(test_both_forecasts())
     
     # Or test only monthly forecast
-    asyncio.run(test_monthly_lstm_forecast())
+    #asyncio.run(test_monthly_lstm_forecast())
     
     # Or test only daily forecast
     # asyncio.run(test_daily_lstm_forecast())

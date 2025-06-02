@@ -14,20 +14,11 @@ class StockService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def fetch_top_tickers(self, days: int = 7) -> list[int]:
-        # Подзапрос для получения последних записей для каждой компании
-        today = datetime.now().date()
-        week_ago = today - timedelta(days=days)
-        stmt = (
-            select(StockPrice.company_id)
-            .where(StockPrice.date >= week_ago)             
-            .group_by(StockPrice.company_id)             
-            .order_by(func.sum(StockPrice.volume).desc())             
-            .limit(5)         
-            )         
-        result = await self.db.execute(stmt)         
-        return [row[0] for row in result.all()]
-        
+    async def fetch_top_tickers(self, days: int = 7, active_within_days: int = 14) -> list[int]:
+        today = datetime.utcnow().date()
+        cutoff_date = today - timedelta(days=active_within_days)
+
+        # Подзапрос с row_number
         subquery = (
             select(
                 StockPrice.company_id,
@@ -37,36 +28,37 @@ class StockService:
                 func.row_number().over(
                     partition_by=StockPrice.company_id,
                     order_by=StockPrice.date.desc()
-                ).label('row_num')
-            ).subquery()
+                ).label('row_num'),
+            )
+            .subquery()
         )
-        
-        # Основной запрос, фильтрующий только последние 7 записей для каждой компании
+
+        # Фильтрация только по активным компаниям (у которых есть данные за последние N дней)
         stmt = (
             select(subquery.c.company_id)
-            .where(subquery.c.row_num <= days)
+            .where(
+                subquery.c.row_num <= days,
+                subquery.c.date >= cutoff_date  # фильтруем по дате последней активности
+            )
             .group_by(subquery.c.company_id)
+            .having(func.count() >= 3)  # например, минимум 3 записи
             .order_by(func.sum(subquery.c.volume).desc())
             .limit(5)
         )
+
         result = await self.db.execute(stmt)
-        return [row[0] for row in result.all()]
+        top_ids = [row[0] for row in result.all()]
+        print("Top active tickers:", top_ids)
+        return top_ids
 
     async def fetch_price_data(self, company_ids: list[int], days: int = 14) -> list[StockPrice]:
         today = datetime.now().date()
-        start_date = today - timedelta(days=days*2)
+        week_ago = today - timedelta(days=days)
 
         stmt = (
             select(StockPrice)
-            .where(
-                and_(
-                    StockPrice.company_id.in_(company_ids),
-                    StockPrice.date >= start_date,
-                    StockPrice.date <= today
-                )
-            )
-            .order_by(StockPrice.company_id.asc(), StockPrice.date.asc())
-            .limit(days)
+            .where(StockPrice.company_id.in_(company_ids), StockPrice.date >= week_ago)
+            .order_by(StockPrice.date.asc())
         )
         result = await self.db.execute(stmt)
         return result.scalars().all()
