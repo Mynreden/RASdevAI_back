@@ -31,7 +31,7 @@ class StockController:
         @self.router.get("/by-ticker/{ticker}", response_model=StockResponse)
         async def get_stock_by_ticker(
             ticker: str,
-            days: int = Query(14, ge=1, le=90),
+            days: int = Query(14, ge=1),
             stock_service: StockService = Depends(get_stock_service),
         ):
             """Получить данные по конкретной акции по тикеру."""
