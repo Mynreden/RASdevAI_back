@@ -15,6 +15,7 @@ class StockService:
         self.db = db
 
     async def fetch_top_tickers(self, days: int = 7, active_within_days: int = 14) -> list[int]:
+        
         today = datetime.utcnow().date()
         cutoff_date = today - timedelta(days=active_within_days)
 
