@@ -90,7 +90,6 @@ class PortfolioController:
 
             user = await self._get_user_by_email(email, db)
 
-            # Get user's portfolio
             result = await db.execute(select(PortfolioItem).filter(PortfolioItem.user_id == user.id))
             items = result.scalars().all()
             if not items:
@@ -98,30 +97,29 @@ class PortfolioController:
 
             ticker_to_shares = {item.ticker: item.shares for item in items}
 
-            try:
-                async with httpx.AsyncClient() as client:
-                    response = await client.post(
-                        "http://localhost:8002/stocks/history",
-                        json={"tickers": list(ticker_to_shares.keys()), "days": days}
-                    )
-                    response.raise_for_status()
-                    prices_data = response.json()
-            except Exception as e:
-                raise HTTPException(status_code=502, detail=f"Error fetching stock prices: {e}")
-
-            # prices_data should look like:
-            # { "KZTK": [{"date": "2025-06-01", "price": 320.5}, ...], ... }
-
-            # Calculate total portfolio value by date
             from collections import defaultdict
             daily_values = defaultdict(float)
 
-            for ticker, prices in prices_data.items():
-                shares = ticker_to_shares.get(ticker, 0)
-                for entry in prices:
-                    daily_values[entry["date"]] += shares * entry["price"]
+            async with httpx.AsyncClient() as client:
+                for ticker, shares in ticker_to_shares.items():
+                    try:
+                        response = await client.get(
+                            f"http://localhost:8000/api/stocks/by-ticker/{ticker}",
+                            params={"days": days}
+                        )
+                        response.raise_for_status()
+                        stock_data = response.json()
+                        print(stock_data)
+
+                        prices = stock_data['priceData']
+                        for entry in prices:
+                                daily_values[entry["date"]] += shares * entry["value"]
+                    except Exception as e:
+                        print(f"Error fetching data for {ticker}: {e}")
+                        raise HTTPException(status_code=502, detail=f"Error fetching data for {ticker}: {e}")
 
             return dict(daily_values)
+
     
     async def _get_user_by_email(self, email: str, db: AsyncSession) -> User:
         result = await db.execute(select(User).filter(User.email == email))
