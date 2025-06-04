@@ -11,4 +11,4 @@ class LSTMForecastResponse(BaseModel):
     predicted_prices: List[float]
 
 class LSTMForecastResponseMonth(BaseModel):
-    predicted_price: float
+    predicted_prices: List[float]

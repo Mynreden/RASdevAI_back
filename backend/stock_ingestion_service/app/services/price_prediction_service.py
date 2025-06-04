@@ -15,8 +15,8 @@ import os
 
 class ForecastService:
     def __init__(self, db):
-        self.ML_SERVICE_URL = "https://7f90-46-34-195-97.ngrok-free.app/lstm-day"
-        self.ML_SERVICE_MONTH_URL = "https://7f90-46-34-195-97.ngrok-free.app/lstm-month"
+        self.ML_SERVICE_URL = "https://1311-2-135-34-104.ngrok-free.app/lstm-day"
+        self.ML_SERVICE_MONTH_URL = "https://1311-2-135-34-104.ngrok-free.app/lstm-month"
         self.db = db
         self.stock_service = StockService(db)
         self.news_service = NewsService(db)
@@ -77,7 +77,7 @@ class ForecastService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def forecast_price_monthly(self, ticker: str) -> LSTMForecastResponseMonth:
+    async def forecast_price_monthly(self, ticker: str, forecast_months: int) -> LSTMForecastResponseMonth:
         try:
             company_id = await self._get_company_id(ticker)
             
@@ -166,7 +166,8 @@ class ForecastService:
 
             payload = {
                 "ticker": ticker,
-                "sequence": sequence
+                "sequence": sequence,
+                "forecast_months": forecast_months
             }
 
             async with httpx.AsyncClient() as client:
@@ -180,9 +181,9 @@ class ForecastService:
 
             result = response.json()
             
-            predicted_price = result["predicted_price"]
+            predicted_prices = result["predicted_prices"]
             
-            return LSTMForecastResponseMonth(predicted_price=predicted_price)
+            return LSTMForecastResponseMonth(predicted_prices=predicted_prices)
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"Monthly forecast error: {str(e)}")

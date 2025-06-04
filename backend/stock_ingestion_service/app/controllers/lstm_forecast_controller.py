@@ -28,10 +28,11 @@ class LSTMForecastController:
         @self.router.get("/monthly/{ticker}", response_model=LSTMForecastResponseMonth)
         async def forecast_price_monthly(
             ticker: str,
+            forecast_month: int = Query(1, ge=1, le=30),
             service: ForecastService = Depends(get_forecast_service)
         ):
             try:
-                return await service.forecast_price_monthly(ticker)
+                return await service.forecast_price_monthly(ticker, forecast_month)
             except Exception as e:
                 error_trace = traceback.format_exc()
                 raise HTTPException(status_code=500, detail=f"Error predicting for {ticker}:\n{str(e)}\n{error_trace}")
