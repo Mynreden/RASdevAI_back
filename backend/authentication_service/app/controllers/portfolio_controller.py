@@ -1,15 +1,17 @@
 # portfolio_controller.py
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Path
+from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Path
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.database import get_db
+from ..services import RabbitService, get_rabbit_service
+from ..core import ConfigService, get_config_service
 from ..models import User, PortfolioItem
 from ..schemas import PortfolioItemCreate, PortfolioItemResponse
 
 class PortfolioController:
-    def __init__(self):
+    def __init__(self, config_service: ConfigService):
         self.router = APIRouter(prefix="/portfolio", tags=["portfolio"])
         self.register_routes()
 
@@ -78,45 +80,40 @@ class PortfolioController:
         
         from collections import defaultdict
 
-        @self.router.get("/history/{days}", response_model=dict)
+        @self.router.get("/history", response_model=dict)
         async def get_portfolio_value_history(
-            days: int = Path(..., ge=1),
+            days: int = Query(30, ge=1),
             db: AsyncSession = Depends(get_db),
-            request: Request = None
+            request: Request = None,
+            rabbit_service: RabbitService = Depends(get_rabbit_service)
         ):
             email = request.headers.get("X-User-Email")
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
 
             user = await self._get_user_by_email(email, db)
-
             result = await db.execute(select(PortfolioItem).filter(PortfolioItem.user_id == user.id))
             items = result.scalars().all()
             if not items:
                 return {}
 
             ticker_to_shares = {item.ticker: item.shares for item in items}
-
-            from collections import defaultdict
             daily_values = defaultdict(float)
 
-            async with httpx.AsyncClient() as client:
-                for ticker, shares in ticker_to_shares.items():
-                    try:
-                        response = await client.get(
-                            f"http://localhost:8000/api/stocks/by-ticker/{ticker}",
-                            params={"days": days}
-                        )
-                        response.raise_for_status()
-                        stock_data = response.json()
-                        print(stock_data)
+            for ticker, shares in ticker_to_shares.items():
+                try:
+                    await rabbit_service.send_message({
+                        "ticker": ticker,
+                        "days": days
+                    })
 
-                        prices = stock_data['priceData']
-                        for entry in prices:
-                                daily_values[entry["date"]] += shares * entry["value"]
-                    except Exception as e:
-                        print(f"Error fetching data for {ticker}: {e}")
-                        raise HTTPException(status_code=502, detail=f"Error fetching data for {ticker}: {e}")
+                    response_data = await rabbit_service.receive_message(timeout=30)
+
+                    for entry in response_data:
+                        daily_values[entry["date"]] += shares * entry["close"]
+                except Exception as e:
+                    print(f"❌ Ошибка при получении данных по {ticker}: {e}")
+                    raise HTTPException(status_code=502, detail=f"Ошибка при получении данных по {ticker}: {e}")
 
             return dict(daily_values)
 

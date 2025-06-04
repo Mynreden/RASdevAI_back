@@ -2,14 +2,14 @@ from datetime import datetime
 import aio_pika
 import asyncio
 import json
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
 from ..models import News, StockPrice, Company, FinancialData
-
-from ..schemas import NewsFromRabbit, StocksFromRabbit, FinancialDataFromRabbit
+from ..services import StockService, get_stock_service
+from ..schemas import NewsFromRabbit, StocksFromRabbit, FinancialDataFromRabbit, StockPriceRequest
 from ..database import get_db_service
 from ..core import ConfigService, get_config_service
 
@@ -22,6 +22,8 @@ class RabbitService:
         self.queue1_name = config_service.get("RABBIT_NEWS_QUEUE")
         self.queue2_name = config_service.get("RABBIT_STOCKS_QUEUE")
         self.queue3_name = config_service.get("RABBIT_FINANCIAL_QUEUE")
+        self.queue4_req_name = config_service.get("RABBIT_PORTFOLIO_REQUEST_QUEUE")
+        self.queue4_resp_name = config_service.get("RABBIT_PORTFOLIO_RESPONSE_QUEUE")
 
         self.connection: aio_pika.RobustConnection | None = None
         self.channel: aio_pika.Channel | None = None
@@ -46,28 +48,28 @@ class RabbitService:
                 print(f"❌ RabbitMQ connection failed (retry {retries}): {e}")
                 await asyncio.sleep(2 ** retries)
 
-    # async def process_queue1_message(self, message: aio_pika.IncomingMessage):
-    #     # async with message.process():
-    #         try:
-    #             payload = json.loads(message.body)
-    #             data = NewsFromRabbit(**payload)
-    #             async with self.db_service.async_session_maker() as session:
-    #                 news = News(
-    #                     ticker=data.ticker,
-    #                     date=datetime.fromisoformat(data.create_datetime),  # преобразуем ISO-строку в datetime
-    #                     title=data.subject,
-    #                     content=data.body,
-    #                     source="KASE",  # или другой источник, если есть
-    #                     important=data.is_important,
-    #                     neutral=data.sentiment_probs.neutral,
-    #                     positive=data.sentiment_probs.positive,
-    #                     negative=data.sentiment_probs.negative,
-    #                 )
-    #                 session.add(news)
-    #                 #await session.commit()
-    #             print(f"✅ Processed message from {self.queue1_name}")
-    #         except Exception as e:
-    #             print(f"❌ Failed to process message from {self.queue1_name}: {e}")
+    async def process_queue1_message(self, message: aio_pika.IncomingMessage):
+        # async with message.process():
+            try:
+                payload = json.loads(message.body)
+                data = NewsFromRabbit(**payload)
+                async with self.db_service.async_session_maker() as session:
+                    news = News(
+                        ticker=data.ticker,
+                        date=datetime.fromisoformat(data.create_datetime),  # преобразуем ISO-строку в datetime
+                        title=data.subject,
+                        content=data.body,
+                        source="KASE",  # или другой источник, если есть
+                        important=data.is_important,
+                        neutral=data.sentiment_probs.neutral,
+                        positive=data.sentiment_probs.positive,
+                        negative=data.sentiment_probs.negative,
+                    )
+                    session.add(news)
+                    #await session.commit()
+                print(f"✅ Processed message from {self.queue1_name}")
+            except Exception as e:
+                print(f"❌ Failed to process message from {self.queue1_name}: {e}")
 
     async def process_queue2_message(self, message: aio_pika.IncomingMessage):
         async with message.process():
@@ -135,19 +137,55 @@ class RabbitService:
             except Exception as e:
                 print(f"❌ Failed to process message from {self.queue3_name}: {e}")
 
+    async def process_queue4_message(self, message: aio_pika.IncomingMessage):
+        async with message.process():
+            try:
+                payload = json.loads(message.body)
+                request_data = StockPriceRequest(**payload)
+
+                async with self.db_service.async_session_maker() as session:
+                    stock_service = StockService(session)
+
+                    companies = await stock_service.fetch_company_info_by_ticker(request_data.ticker)
+
+                    if not companies:
+                        raise ValueError(f"No company found for ticker {request_data.ticker}")
+
+                    company_ids = [company.id for company in companies]
+
+                    prices = await stock_service.fetch_price_data(company_ids, request_data.days)
+
+                    response = [
+                        {
+                            "date": price.date.isoformat(),
+                            "close": price.close
+                        }
+                        for price in prices
+                    ]
+
+                    await self.channel.default_exchange.publish(
+                        aio_pika.Message(body=json.dumps(response).encode()),
+                        routing_key=self.queue4_resp_name
+                    )
+                    print(f"✅ Processed stock request for {request_data.ticker}")
+
+            except Exception as e:
+                print(f"❌ Failed to process stock request for {payload.get('ticker', 'UNKNOWN')}: {e}")
+
     async def start_consumers(self):
         await self.connect()
         await self.channel.set_qos(prefetch_count=10)
 
-        # queue1 = await self.channel.declare_queue(self.queue1_name, durable=True)
-        # queue2 = await self.channel.declare_queue(self.queue2_name, durable=True)
+        #queue1 = await self.channel.declare_queue(self.queue1_name, durable=True)
+        queue2 = await self.channel.declare_queue(self.queue2_name, durable=True)
         queue3 = await self.channel.declare_queue(self.queue3_name, durable=True)
-
-        # await queue1.consume(self.process_queue1_message)
-        # await queue2.consume(self.process_queue2_message)
+        queue4 = await self.channel.declare_queue(self.queue4_req_name, durable=True)
+        #await queue1.consume(self.process_queue1_message)
+        await queue2.consume(self.process_queue2_message)
         await queue3.consume(self.process_queue3_message)
+        await queue4.consume(self.process_queue4_message)
 
-        print(f"📥 Consumers started for queues: {self.queue1_name}, {self.queue2_name}, {self.queue3_name}")
+        print(f"📥 Consumers started for queues: {self.queue1_name}, {self.queue2_name}, {self.queue3_name}, {self.queue4_req_name}")
 
     async def stop(self):
         self.should_stop.set()

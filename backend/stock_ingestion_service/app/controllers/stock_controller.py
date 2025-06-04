@@ -43,7 +43,6 @@ class StockController:
 
                 company = companies[0]
                 company_id = company.id
-                print(company_id)
                 price_data = await stock_service.fetch_price_data([company_id], days)
                 if not price_data:
                     raise HTTPException(status_code=404, detail="Нет ценовых данных")

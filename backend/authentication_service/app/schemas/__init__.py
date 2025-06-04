@@ -3,3 +3,4 @@ from .token import Token, RefreshTokenRequest
 from .watchlist import WatchlistItemBase, WatchlistResponse
 from .portfolio import PortfolioItemCreate, PortfolioItemResponse
 from .email_to_send import EmailToSend
+from ..models.stock_prices import StockPrice

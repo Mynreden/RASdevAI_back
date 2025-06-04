@@ -35,15 +35,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="RASdevAI Auth Service", lifespan=lifespan)
 
-# midlewares regustration
 register_middlewares(app)
 
-# controller registratiom
 watchlist_controller = WatchlistController()
-app.include_router(watchlist_controller.get_router())  #
+app.include_router(watchlist_controller.get_router())
 auth_controller = AuthController()
 app.include_router(auth_controller.get_router())  
-portfolio_controller = PortfolioController()
+portfolio_controller = PortfolioController(config_service=ConfigService())
 app.include_router(portfolio_controller.get_router())  
 
 

@@ -1,6 +1,7 @@
 # gateway/main.py
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import httpx
 import os
 
@@ -98,11 +99,10 @@ async def proxy_user(path: str, request: Request):
         headers=dict(response.headers)
     )
 
-
 @app.api_route("/api/portfolio/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_user(path: str, request: Request):
     url = f"{PORTFOLIO_SERVICE_URL}/{path}"
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=30) as client:
         response = await client.request(
             method=request.method,
             url=url,
@@ -110,11 +110,13 @@ async def proxy_user(path: str, request: Request):
             params=request.query_params,
             content=await request.body()
         )
-    return Response(
-        content=response.content,
-        status_code=response.status_code,
-        headers=dict(response.headers)
-    )
+
+        return Response(
+                content=response.content,
+                status_code=response.status_code,
+                media_type=response.headers.get("content-type", "text/plain"),
+        )
+
 
 @app.api_route("/api/stocks/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_user(path: str, request: Request):

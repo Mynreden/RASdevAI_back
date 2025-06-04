@@ -1,21 +1,17 @@
-import requests
+import httpx
 
-# Config
-url = "http://localhost:8000/api/portfolio/history/60"
-headers = {
-    "accept": "application/json",
-    "X-User-Email": "rulik_2004@mail.ru"  # Replace with actual email
-}
+BASE_URL = "http://localhost:8000/api"  # change if your FastAPI app runs on a different port
+HEADERS = {"X-User-Email": "rulik_2004@mail.ru"}  # use your test user email
 
-# Make request
-response = requests.get(url, headers=headers)
+def test_portfolio_history():
+    response = httpx.get(f"{BASE_URL}/portfolio/history", headers=HEADERS, timeout=30)
+    print(response)
+    print("Status Code:", response.status_code)
+    try:
+        print("Response JSON:", response.json())
+    except Exception as e:
+        print("Failed to parse JSON:", e)
+        print("Response Text:", response.text)
 
-# Handle response
-if response.status_code == 200:
-    data = response.json()
-    print("Portfolio History:")
-    print(data)
-    for entry in data:
-        print(entry)
-else:
-    print(f"Error {response.status_code}: {response.text}")
+if __name__ == "__main__":
+    test_portfolio_history()

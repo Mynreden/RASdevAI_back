@@ -99,7 +99,6 @@ class StockService:
         # Create company lookup dictionary
         company_dict = {c.id: c for c in company_data}
         
-        # Group price data by company
         price_dict = {}
         for price in price_data:
             if price.company_id not in price_dict:
