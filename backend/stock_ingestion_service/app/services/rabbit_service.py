@@ -138,39 +138,78 @@ class RabbitService:
                 print(f"❌ Failed to process message from {self.queue3_name}: {e}")
 
     async def process_queue4_message(self, message: aio_pika.IncomingMessage):
+        """Process stock price requests"""
         async with message.process():
+            payload = None
             try:
                 payload = json.loads(message.body)
+                correlation_id = payload.get("correlation_id")
                 request_data = StockPriceRequest(**payload)
+
+                print(f"📊 Processing stock request for {request_data.ticker} (correlation_id: {correlation_id})")
 
                 async with self.db_service.async_session_maker() as session:
                     stock_service = StockService(session)
 
                     companies = await stock_service.fetch_company_info_by_ticker(request_data.ticker)
-
                     if not companies:
                         raise ValueError(f"No company found for ticker {request_data.ticker}")
 
+                    # Fetch price data
                     company_ids = [company.id for company in companies]
-
                     prices = await stock_service.fetch_price_data(company_ids, request_data.days)
+                    
+                    if not prices:
+                        raise ValueError(f"No price data found for ticker {request_data.ticker}")
 
+                    # Prepare response
                     response = [
                         {
                             "date": price.date.isoformat(),
-                            "close": price.close
+                            "close": float(price.close)
                         }
                         for price in prices
                     ]
 
+                    # Send response with correlation ID
+                    response_message = aio_pika.Message(
+                        body=json.dumps(response).encode(),
+                        correlation_id=correlation_id
+                    )
+                    
                     await self.channel.default_exchange.publish(
-                        aio_pika.Message(body=json.dumps(response).encode()),
+                        response_message,
                         routing_key=self.queue4_resp_name
                     )
-                    print(f"✅ Processed stock request for {request_data.ticker}")
+                    
+                    print(f"✅ Sent response for {request_data.ticker} (correlation_id: {correlation_id})")
 
             except Exception as e:
-                print(f"❌ Failed to process stock request for {payload.get('ticker', 'UNKNOWN')}: {e}")
+                error_msg = f"Failed to process stock request for {payload.get('ticker', 'UNKNOWN') if payload else 'UNKNOWN'}: {e}"
+                print(f"❌ {error_msg}")
+                
+                # Send error response with correlation ID if possible
+                if payload and payload.get("correlation_id"):
+                    try:
+                        correlation_id = payload["correlation_id"]
+                        error_response = {
+                            "error": str(e),
+                            "ticker": payload.get("ticker", "UNKNOWN")
+                        }
+                        
+                        error_message = aio_pika.Message(
+                            body=json.dumps(error_response).encode(),
+                            correlation_id=correlation_id
+                        )
+                        
+                        await self.channel.default_exchange.publish(
+                            error_message,
+                            routing_key=self.queue4_resp_name
+                        )
+                        
+                        print(f"📤 Sent error response (correlation_id: {correlation_id})")
+                    except Exception as send_error:
+                        print(f"❌ Failed to send error response: {send_error}")
 
     async def start_consumers(self):
         await self.connect()

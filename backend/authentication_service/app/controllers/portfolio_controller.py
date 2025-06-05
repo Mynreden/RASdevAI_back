@@ -1,5 +1,7 @@
 # portfolio_controller.py
+import asyncio
 from datetime import datetime, timedelta
+from typing import Dict
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Path
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -80,42 +82,97 @@ class PortfolioController:
         
         from collections import defaultdict
 
-        @self.router.get("/history", response_model=dict)
+        @self.router.get("/history", response_model=Dict[str, float])
         async def get_portfolio_value_history(
-            days: int = Query(30, ge=1),
+            days: int = Query(30, ge=1, le=365),
             db: AsyncSession = Depends(get_db),
             request: Request = None,
             rabbit_service: RabbitService = Depends(get_rabbit_service)
         ):
+            """Get portfolio value history for specified number of days"""
+            
+            # Authenticate user
             email = request.headers.get("X-User-Email")
             if not email:
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, 
+                    detail="User not authenticated"
+                )
 
+            # Get user and portfolio items
             user = await self._get_user_by_email(email, db)
-            result = await db.execute(select(PortfolioItem).filter(PortfolioItem.user_id == user.id))
+            result = await db.execute(
+                select(PortfolioItem).filter(PortfolioItem.user_id == user.id)
+            )
             items = result.scalars().all()
+            
             if not items:
                 return {}
 
+            # Group items by ticker
             ticker_to_shares = {item.ticker: item.shares for item in items}
-            daily_values = defaultdict(float)
-
+            
+            # Send all requests concurrently
+            correlation_ids = {}
             for ticker, shares in ticker_to_shares.items():
                 try:
-                    await rabbit_service.send_message({
+                    correlation_id = await rabbit_service.send_message({
                         "ticker": ticker,
                         "days": days
                     })
-
-                    response_data = await rabbit_service.receive_message(timeout=30)
-
-                    for entry in response_data:
-                        daily_values[entry["date"]] += shares * entry["close"]
+                    correlation_ids[correlation_id] = (ticker, shares)
                 except Exception as e:
-                    print(f"❌ Ошибка при получении данных по {ticker}: {e}")
-                    raise HTTPException(status_code=502, detail=f"Ошибка при получении данных по {ticker}: {e}")
-
-            return dict(daily_values)
+                    print(f"❌ Error sending request for {ticker}: {e}")
+                    raise HTTPException(
+                        status_code=502, 
+                        detail=f"Error sending request for {ticker}: {e}"
+                    )
+            
+            # Wait for all responses concurrently
+            daily_values = defaultdict(float)
+            
+            async def process_response(correlation_id: str, ticker: str, shares: float):
+                try:
+                    response_data = await rabbit_service.wait_for_response(
+                        correlation_id, 
+                        timeout=30
+                    )
+                    
+                    ticker_daily_values = {}
+                    for entry in response_data:
+                        date = entry["date"]
+                        value = shares * entry["close"]
+                        ticker_daily_values[date] = value
+                    
+                    return ticker_daily_values
+                except Exception as e:
+                    print(f"❌ Error getting response for {ticker}: {e}")
+                    raise HTTPException(
+                        status_code=502, 
+                        detail=f"Error getting data for {ticker}: {e}"
+                    )
+            
+            # Process all responses concurrently
+            tasks = [
+                process_response(correlation_id, ticker, shares)
+                for correlation_id, (ticker, shares) in correlation_ids.items()
+            ]
+            
+            try:
+                results = await asyncio.gather(*tasks)
+                
+                for ticker_daily_values in results:
+                    for date, value in ticker_daily_values.items():
+                        daily_values[date] += value
+                
+                return dict(daily_values)
+                
+            except Exception as e:
+                print(f"❌ Error processing portfolio history: {e}")
+                raise HTTPException(
+                    status_code=500, 
+                    detail="Error processing portfolio history"
+                )
 
     
     async def _get_user_by_email(self, email: str, db: AsyncSession) -> User:
