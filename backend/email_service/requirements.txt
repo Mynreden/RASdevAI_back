@@ -8,3 +8,4 @@ authlib
 python-dotenv
 aiosmtplib
 aio-pika
+itsdangerous

@@ -8,3 +8,4 @@ python-dotenv
 aio-pika
 authlib
 email-validator
+itsdangerous
