@@ -8,3 +8,4 @@ sqlalchemy
 openai
 itsdangerous
 aio-pika
+asyncpg
