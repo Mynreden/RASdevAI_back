@@ -2,25 +2,25 @@ version: "3.9"
 
 services:
   api_gateway_service:
-    build: ./backend/api_gateway
+    build: ./api_gateway
     container_name: api_gateway
     ports:
       - "8000:8000"
 
   user_service:
-    build: ./backend/authentication_service
+    build: ./authentication_service
     container_name: user_service
     ports:
       - "8001:8001"
 
   email_service:
-    build: ./backend/email_service
+    build: ./email_service
     container_name: email_service
     ports:
       - "8003:8003"
 
   stock_service:
-    build: ./backend/stock_ingestion_service
+    build: ./stock_ingestion_service
     container_name: stock_service
     ports:
       - "8002:8002"
