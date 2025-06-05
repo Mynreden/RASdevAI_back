@@ -6,4 +6,5 @@ sqlalchemy
 asyncpg
 authlib
 python-dotenv
-
+aiosmtplib
+aio-pika

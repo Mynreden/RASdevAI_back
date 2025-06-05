@@ -5,3 +5,4 @@ aiokafka
 redis
 pydantic
 sqlalchemy
+openai

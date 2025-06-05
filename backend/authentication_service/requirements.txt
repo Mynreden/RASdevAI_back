@@ -1,9 +1,10 @@
 fastapi
-uvicorn
+uvicorn[standard]
+sqlalchemy[asyncio]
+httpx
 python-jose[cryptography]
 passlib[bcrypt]
-sqlalchemy
-asyncpg
-authlib
 python-dotenv
-
+aio-pika
+authlib
+email-validator
