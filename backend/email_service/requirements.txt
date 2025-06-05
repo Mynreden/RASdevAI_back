@@ -9,3 +9,4 @@ python-dotenv
 aiosmtplib
 aio-pika
 itsdangerous
+pydantic[email]
