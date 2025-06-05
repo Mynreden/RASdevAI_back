@@ -10,9 +10,22 @@ import sys
 import os
 
 # Add your models path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from models import Base  # <- update with your actual Base
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..')))
+from authentication_service.app.models import Base  # <- update with your actual Base
 
+
+# Вариант 1: вывести имена таблиц из метаданных
+print("Все таблицы в metadata:")
+for table_name in Base.metadata.tables.keys():
+    print(table_name)
+
+# Вариант 2: вывести имена всех классов, унаследованных от Base
+print("\nВсе модели (классы) унаследованные от Base:")
+for mapper in Base.registry.mappers:
+    cls = mapper.class_
+    print(cls.__name__)
+
+    
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config

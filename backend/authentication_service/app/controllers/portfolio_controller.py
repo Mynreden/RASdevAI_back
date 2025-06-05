@@ -13,7 +13,7 @@ from ..models import User, PortfolioItem
 from ..schemas import PortfolioItemCreate, PortfolioItemResponse
 
 class PortfolioController:
-    def __init__(self, config_service: ConfigService):
+    def __init__(self):
         self.router = APIRouter(prefix="/portfolio", tags=["portfolio"])
         self.register_routes()
 

@@ -8,7 +8,6 @@ from fastapi import Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..schemas import StockPrice
 
 from ..database import get_db
 from ..core import ConfigService, get_config_service

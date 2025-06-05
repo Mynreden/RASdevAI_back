@@ -17,3 +17,4 @@ class User(BaseModel, Base):
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     subscription_type = Column(Enum(SubscriptionType), default=SubscriptionType.FREE, nullable=False)
     subscription_expire_date = Column(DateTime, nullable=True)
+    telegram_id = Column(String, nullable=True)
