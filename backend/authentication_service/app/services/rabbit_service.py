@@ -53,18 +53,14 @@ class RabbitService:
             """Send message and return correlation ID"""
             await self.connect()
             
-            # Generate unique correlation ID
             correlation_id = str(uuid.uuid4())
             
-            # Add correlation ID to message
             message_with_id = {**message, "correlation_id": correlation_id}
             
-            # Start response consumer if not already started
             if not self.response_consumer_started:
                 asyncio.create_task(self._start_response_consumer())
                 self.response_consumer_started = True
             
-            # Send request
             request_queue = await self.channel.declare_queue(
                 self.request_stock_price_queue, 
                 durable=True
@@ -81,23 +77,18 @@ class RabbitService:
             return correlation_id
         
     async def wait_for_response(self, correlation_id: str, timeout: int = 30) -> List:
-        """Wait for response with specific correlation ID"""
-        # Create future for this request
         future = asyncio.get_event_loop().create_future()
         self.pending_requests[correlation_id] = future
         
         try:
-            # Wait for response
             result = await asyncio.wait_for(future, timeout=timeout)
             return result
         except asyncio.TimeoutError:
             raise TimeoutError(f"No response received within {timeout} seconds")
         finally:
-            # Clean up
             self.pending_requests.pop(correlation_id, None)
     
     async def send_message_with_response(self, message: dict, timeout: int = 30) -> List:
-        """Send message and wait for correlated response (convenience method)"""
         correlation_id = await self.send_message(message)
         return await self.wait_for_response(correlation_id, timeout)
     

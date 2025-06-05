@@ -22,7 +22,7 @@ class FinancialDataController:
         @self.router.get("/latest/{ticker}", response_model=FinancialDataItem)
         async def get_latest_financial(
             ticker: str,
-            db: AsyncSession = Depends(get_db)  # <-- specify type here for clarity
+            db: AsyncSession = Depends(get_db)
         ):
             try:
                 stmt = (

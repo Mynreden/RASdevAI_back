@@ -138,7 +138,6 @@ class RabbitService:
                 print(f"❌ Failed to process message from {self.queue3_name}: {e}")
 
     async def process_queue4_message(self, message: aio_pika.IncomingMessage):
-        """Process stock price requests"""
         async with message.process():
             payload = None
             try:
@@ -155,14 +154,12 @@ class RabbitService:
                     if not companies:
                         raise ValueError(f"No company found for ticker {request_data.ticker}")
 
-                    # Fetch price data
                     company_ids = [company.id for company in companies]
                     prices = await stock_service.fetch_price_data(company_ids, request_data.days)
                     
                     if not prices:
                         raise ValueError(f"No price data found for ticker {request_data.ticker}")
 
-                    # Prepare response
                     response = [
                         {
                             "date": price.date.isoformat(),
@@ -171,7 +168,6 @@ class RabbitService:
                         for price in prices
                     ]
 
-                    # Send response with correlation ID
                     response_message = aio_pika.Message(
                         body=json.dumps(response).encode(),
                         correlation_id=correlation_id
@@ -188,7 +184,6 @@ class RabbitService:
                 error_msg = f"Failed to process stock request for {payload.get('ticker', 'UNKNOWN') if payload else 'UNKNOWN'}: {e}"
                 print(f"❌ {error_msg}")
                 
-                # Send error response with correlation ID if possible
                 if payload and payload.get("correlation_id"):
                     try:
                         correlation_id = payload["correlation_id"]

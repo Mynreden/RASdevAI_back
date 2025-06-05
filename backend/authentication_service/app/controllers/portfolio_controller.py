@@ -89,9 +89,6 @@ class PortfolioController:
             request: Request = None,
             rabbit_service: RabbitService = Depends(get_rabbit_service)
         ):
-            """Get portfolio value history for specified number of days"""
-            
-            # Authenticate user
             email = request.headers.get("X-User-Email")
             if not email:
                 raise HTTPException(
@@ -99,7 +96,6 @@ class PortfolioController:
                     detail="User not authenticated"
                 )
 
-            # Get user and portfolio items
             user = await self._get_user_by_email(email, db)
             result = await db.execute(
                 select(PortfolioItem).filter(PortfolioItem.user_id == user.id)
@@ -109,10 +105,8 @@ class PortfolioController:
             if not items:
                 return {}
 
-            # Group items by ticker
             ticker_to_shares = {item.ticker: item.shares for item in items}
             
-            # Send all requests concurrently
             correlation_ids = {}
             for ticker, shares in ticker_to_shares.items():
                 try:
@@ -128,7 +122,6 @@ class PortfolioController:
                         detail=f"Error sending request for {ticker}: {e}"
                     )
             
-            # Wait for all responses concurrently
             daily_values = defaultdict(float)
             
             async def process_response(correlation_id: str, ticker: str, shares: float):
@@ -152,7 +145,6 @@ class PortfolioController:
                         detail=f"Error getting data for {ticker}: {e}"
                     )
             
-            # Process all responses concurrently
             tasks = [
                 process_response(correlation_id, ticker, shares)
                 for correlation_id, (ticker, shares) in correlation_ids.items()
