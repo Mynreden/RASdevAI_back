@@ -9,3 +9,4 @@ aio-pika
 authlib
 email-validator
 itsdangerous
+asyncpg
