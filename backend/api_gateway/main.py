@@ -15,15 +15,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://localhost:8001/auth")
-WATCHLIST_SERVICE_URL = os.getenv("WATCHLIST_SERVICE_URL", "http://localhost:8001/watchlist")
-PORTFOLIO_SERVICE_URL = os.getenv("PORTFOLIO_SERVICE_URL", "http://localhost:8001/portfolio")
-STOCK_SERVICE_URL = os.getenv("STOCK_SERVICE_URL", "http://localhost:8002/stocks")
-NEWS_SERVICE_URL = os.getenv("NEWS_SERVICE_URL", "http://localhost:8002/news")
-LLM_SERVICE_URL=  os.getenv("LLM_SERVICE_URL", "http://localhost:8002/chat-gpt")
-COMPANY_SERVICE_URL=  os.getenv("COMPANY_SERVICE_URL", "http://localhost:8002/companies")
-FINANCIAL_SERVICE_URL=  os.getenv("FINANCIAL_SERVICE_URL", "http://localhost:8002/financial")
-LSTM_SERVICE_URL=  os.getenv("LSTM_SERVICE_URL", "http://localhost:8002/forecast")
+AUTH_SERVICE_URL = os.getenv("AUTH_SERVICE_URL", "http://164.90.167.226/:8001/auth")
+WATCHLIST_SERVICE_URL = os.getenv("WATCHLIST_SERVICE_URL", "http://164.90.167.226/:8001/watchlist")
+PORTFOLIO_SERVICE_URL = os.getenv("PORTFOLIO_SERVICE_URL", "http://164.90.167.226/:8001/portfolio")
+STOCK_SERVICE_URL = os.getenv("STOCK_SERVICE_URL", "http://164.90.167.226/:8002/stocks")
+NEWS_SERVICE_URL = os.getenv("NEWS_SERVICE_URL", "http://164.90.167.226/:8002/news")
+LLM_SERVICE_URL=  os.getenv("LLM_SERVICE_URL", "http://164.90.167.226/:8002/chat-gpt")
+COMPANY_SERVICE_URL=  os.getenv("COMPANY_SERVICE_URL", "http://164.90.167.226/:8002/companies")
+FINANCIAL_SERVICE_URL=  os.getenv("FINANCIAL_SERVICE_URL", "http://164.90.167.226/:8002/financial")
+LSTM_SERVICE_URL=  os.getenv("LSTM_SERVICE_URL", "http://164.90.167.226/:8002/forecast")
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
