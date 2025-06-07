@@ -16,7 +16,7 @@ class LSTMForecastController:
         @self.router.get("/{ticker}", response_model=LSTMForecastResponse)
         async def forecast_price(
             ticker: str,
-            forecast_days: int = Query(5, ge=1, le=30),
+            forecast_days: int = Query(5, ge=1, le=90),
             service: ForecastService = Depends(get_forecast_service)
         ):
             try:

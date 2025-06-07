@@ -15,8 +15,8 @@ import os
 
 class ForecastService:
     def __init__(self, db):
-        self.ML_SERVICE_URL = "https://1311-2-135-34-104.ngrok-free.app/lstm-day"
-        self.ML_SERVICE_MONTH_URL = "https://1311-2-135-34-104.ngrok-free.app/lstm-month"
+        self.ML_SERVICE_URL = "http://164.90.167.226:8100/lstm-day"
+        self.ML_SERVICE_MONTH_URL = "http://164.90.167.226:8100/lstm-month"
         self.db = db
         self.stock_service = StockService(db)
         self.news_service = NewsService(db)
