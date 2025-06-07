@@ -1,9 +1,9 @@
 from redis.asyncio import Redis
 from redis.exceptions import RedisError
-from fastapi import Depends
-from typing import AsyncGenerator
+from typing import List, Optional, Union
+from datetime import date
+import json
 
-from .stub_redis import StubRedis
 from ..core import get_config_service, ConfigService
 
 
@@ -17,21 +17,44 @@ class TTLRedis(Redis):
             ex = self.default_ttl
         return await super().set(name, value, ex=ex, *args, **kwargs)
 
-async def get_redis_client(
-    config_service: ConfigService = Depends(get_config_service)
-) -> AsyncGenerator[Redis, None]:
-    try:
-        client = TTLRedis(
-            host=config_service.get("REDIS_HOST", "localhost"),
-            port=int(config_service.get("REDIS_PORT", 6379)),
-            username=config_service.get("REDIS_USERNAME", "default"),
-            password=config_service.get("REDIS_PASSWORD", None),
-            decode_responses=True,
-            default_ttl=int(config_service.get("REDIS_CACHE_EXPIRE_SECONDS", 3600)),
-        )
 
-        await client.ping()
-        yield client
-        await client.aclose()
-    except RedisError:
-        yield StubRedis()
+class PricePredictionRedis:
+    def __init__(self, redis: TTLRedis):
+        self.redis = redis
+
+    def _key(self, predict_date: Union[str, date], ticker: str, prefix: str = "day") -> str:
+        date_str = predict_date if isinstance(predict_date, str) else predict_date.isoformat()
+        return f"predictions:{prefix}:{date_str}:{ticker.upper()}"
+
+    async def save_predictions(self, predict_date: date, ticker: str, prices: List[float], prefix="day") -> None:
+        key = self._key(predict_date, ticker, prefix=prefix)
+        value = json.dumps(prices)
+        await self.redis.set(key, value)
+
+    async def get_predictions(self, predict_date: date, ticker: str, prefix="day") -> Optional[List[float]]:
+        key = self._key(predict_date, ticker, prefix=prefix)
+        result = await self.redis.get(key)
+        if result:
+            return json.loads(result)
+        return None
+
+    async def close(self):
+        await self.redis.aclose()
+
+
+async def get_redis_client() -> PricePredictionRedis:
+    config_service: ConfigService = get_config_service()
+
+    redis = TTLRedis(
+        host=config_service.get("REDIS_HOST", "localhost"),  # Use your Redis IP if needed
+        port=int(config_service.get("REDIS_PORT", 6379)),
+        decode_responses=True,
+        default_ttl=int(config_service.get("REDIS_CACHE_EXPIRE_SECONDS", 3600)),
+    )
+
+    try:
+        await redis.ping()
+    except RedisError as e:
+        raise RuntimeError("Failed to connect to Redis") from e
+
+    return PricePredictionRedis(redis)
