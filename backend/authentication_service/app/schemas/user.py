@@ -27,3 +27,8 @@ class PasswordChange(BaseModel):
 class LoginRequest(BaseModel):
     email: EmailStr = Field(description="User email")
     password: Password = Field(min_length=8, description="Password (min 8 characters)")
+
+class TelegramLoginRequest(BaseModel):
+    email: EmailStr = Field(description="User email")
+    password: Password = Field(min_length=8, description="Password (min 8 characters)")
+    telegram_id: int = Field(description="User telegram id")

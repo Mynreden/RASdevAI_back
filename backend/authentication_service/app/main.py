@@ -10,7 +10,7 @@ from app.controllers import AuthController, WatchlistController, PortfolioContro
 from app.services import get_email_service
 from dotenv import load_dotenv
 
-from app.core import ConfigService
+from app.core import ConfigService, setup_custom_openapi
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -36,6 +36,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="RASdevAI Auth Service", lifespan=lifespan)
 
 register_middlewares(app)
+setup_custom_openapi(app)
+
 
 watchlist_controller = WatchlistController()
 app.include_router(watchlist_controller.get_router())

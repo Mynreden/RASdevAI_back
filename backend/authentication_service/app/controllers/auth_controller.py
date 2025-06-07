@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Body
 from fastapi.responses import HTMLResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
+from app.core import get_config_service, ConfigService
 from app.services import AuthService, EmailService, OAuthService,  get_auth_service, get_email_service, get_oauth_service
-from app.schemas import UserCreate, Token, PasswordChange, RefreshTokenRequest, LoginRequest
+from app.schemas import UserCreate, Token, PasswordChange, RefreshTokenRequest, LoginRequest, TelegramLoginRequest
 import logging
 from typing import Dict
 from starlette.datastructures import URL
@@ -19,10 +20,12 @@ class AuthController:
         async def register(user: UserCreate, 
                            db: AsyncSession = Depends(get_db),             
                            auth_service: AuthService = Depends(get_auth_service),
-                           email_service: EmailService = Depends(get_email_service)):
+                           email_service: EmailService = Depends(get_email_service),
+                           config_service: ConfigService = Depends(get_config_service)):
             user_data = await auth_service.register_user(user)
             verification_token = auth_service.create_verification_token({"user_id": user_data["user_id"]})
-            verification_link = f"http://localhost:8001/auth/verify-email?token={verification_token}"
+            verification_url = config_service.get("GATEWAY_URL", "")
+            verification_link = f"{verification_url}/api/auth/verify-email?token={verification_token}"
             await email_service.send_verification_email(user_data["email"], verification_link)
             return {"message": "User registered successfully"}
 
@@ -52,15 +55,27 @@ class AuthController:
                                   request: Request, 
                                   db: AsyncSession = Depends(get_db),                           
                                   auth_service: AuthService = Depends(get_auth_service)):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
             return await auth_service.change_password(email, data.old_password, data.new_password)
-
+        
+        @self.router.post("/telegram_login")
+        async def telegram_login(request: TelegramLoginRequest = Body(...), 
+                        db: AsyncSession = Depends(get_db),                           
+                        auth_service: AuthService = Depends(get_auth_service)) -> str:
+            email = request.email
+            password = request.password
+            telegram_id = request.telegram_id
+            if not email or not password or not telegram_id:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email, password and telegram_id required")
+            return await auth_service.telegram_login(email, password, telegram_id)
+        
         @self.router.get("/login/google")
         async def google_login(request: Request,
-                               oauth_service: OAuthService = Depends(get_oauth_service)):
-            redirect_uri = URL(str(request.base_url) + "/api/auth/google")  # request.url_for("google_callback")
+                               oauth_service: OAuthService = Depends(get_oauth_service),
+                               config_service: ConfigService = Depends(get_config_service)):
+            redirect_uri = URL(str(config_service.get("GATEWAY_URL")) + "/api/auth/google")  # request.url_for("google_callback")
             return await oauth_service.get_oauth().google.authorize_redirect(request, redirect_uri, access_type="offline", prompt="consent")
 
         @self.router.get("/google", name="google_callback")

@@ -12,7 +12,7 @@ class WatchlistController:
     def register_routes(self):
         @self.router.get("/", response_model=dict)
         async def get_watchlist(db: AsyncSession = Depends(get_db), request: Request = None):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
             result = await db.execute(select(User).filter(User.email == email))
@@ -29,7 +29,7 @@ class WatchlistController:
             db: AsyncSession = Depends(get_db),
             request: Request = None
         ):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
             result = await db.execute(select(User).filter(User.email == email))
@@ -53,7 +53,7 @@ class WatchlistController:
             db: AsyncSession = Depends(get_db),
             request: Request = None
         ):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
             result = await db.execute(select(User).filter(User.email == email))

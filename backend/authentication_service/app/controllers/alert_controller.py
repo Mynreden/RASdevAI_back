@@ -13,7 +13,7 @@ class AlertController:
     def register_routes(self):
         @self.router.get("/", response_model=dict)
         async def get_alerts(db: AsyncSession = Depends(get_db), request: Request = None):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
 
@@ -33,7 +33,7 @@ class AlertController:
             db: AsyncSession = Depends(get_db),
             request: Request = None
         ):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
 
@@ -61,7 +61,7 @@ class AlertController:
             db: AsyncSession = Depends(get_db),
             request: Request = None
         ):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
 

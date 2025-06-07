@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, Enum, DateTime
+from sqlalchemy import Column, String, Boolean, Enum, DateTime, BIGINT
 from .base import Base, BaseModel
 from sqlalchemy.orm import relationship
 from .roles import UserRole
@@ -17,4 +17,4 @@ class User(BaseModel, Base):
     role = Column(Enum(UserRole), default=UserRole.USER, nullable=False)
     subscription_type = Column(Enum(SubscriptionType), default=SubscriptionType.FREE, nullable=False)
     subscription_expire_date = Column(DateTime, nullable=True)
-    telegram_id = Column(String, nullable=True)
+    telegram_id = Column(BIGINT, nullable=True)

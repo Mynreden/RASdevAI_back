@@ -101,6 +101,14 @@ class AuthService:
         access_token = self.create_access_token({"sub": user.email})
         refresh_token = self.create_refresh_token({"sub": user.email})
         return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer", user=user)
+    
+    async def telegram_login(self, email: str, password: str, telegram_id: int) -> Token:
+        token = await self.login_user(email=email, password=password)
+        user = token.user
+        user.telegram_id = telegram_id
+        self.db.add(user)
+        await self.db.commit()
+        return token
 
     async def refresh_token(self, refresh_token: str) -> Token:
         try:

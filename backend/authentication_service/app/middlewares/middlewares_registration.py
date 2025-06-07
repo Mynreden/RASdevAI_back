@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.middleware.cors import CORSMiddleware
 from app.core.config_service import get_config_service
+from .auth_middleware import AuthMiddleware
 
 def register_middlewares(app: FastAPI):
     config = get_config_service()
@@ -17,3 +18,6 @@ def register_middlewares(app: FastAPI):
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    
+    app.add_middleware(AuthMiddleware, secret_key=secret_key)
+

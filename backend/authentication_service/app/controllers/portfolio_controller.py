@@ -2,15 +2,16 @@
 import asyncio
 from datetime import datetime, timedelta
 from typing import Dict
+from collections import defaultdict
 from fastapi import APIRouter, Depends, HTTPException, Query, status, Request, Path
 import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.database import get_db
-from ..services import RabbitService, get_rabbit_service
+from ..services import RabbitService, get_rabbit_service, StockService, get_stock_service
 from ..core import ConfigService, get_config_service
 from ..models import User, PortfolioItem
-from ..schemas import PortfolioItemCreate, PortfolioItemResponse
+from ..schemas import PortfolioItemCreate, PortfolioItemResponse, StockResponse
 
 class PortfolioController:
     def __init__(self):
@@ -23,7 +24,7 @@ class PortfolioController:
             db: AsyncSession = Depends(get_db),
             request: Request = None
         ):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
 
@@ -42,7 +43,7 @@ class PortfolioController:
             db: AsyncSession = Depends(get_db),
             request: Request = None
         ):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
 
@@ -64,7 +65,7 @@ class PortfolioController:
             db: AsyncSession = Depends(get_db),
             request: Request = None
         ):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
 
@@ -80,92 +81,43 @@ class PortfolioController:
             await db.commit()
             return {"message": f"{ticker} removed from portfolio"}
         
-        from collections import defaultdict
-
         @self.router.get("/history", response_model=Dict[str, float])
         async def get_portfolio_value_history(
             days: int = Query(30, ge=1, le=365),
             db: AsyncSession = Depends(get_db),
+            stock_service: StockService = Depends(get_stock_service),
             request: Request = None,
-            rabbit_service: RabbitService = Depends(get_rabbit_service)
         ):
-            email = request.headers.get("X-User-Email")
+            email = request.state.user_email
             if not email:
                 raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED, 
+                    status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="User not authenticated"
                 )
+            user_result = await db.execute(
+                select(User.id).filter(User.email == email)
+            )
+            user_id = user_result.scalar()
+            if not user_id:
+                raise HTTPException(status_code=404, detail="User not found")
 
-            user = await self._get_user_by_email(email, db)
             result = await db.execute(
-                select(PortfolioItem).filter(PortfolioItem.user_id == user.id)
+                select(PortfolioItem).filter(PortfolioItem.user_id == user_id)
             )
             items = result.scalars().all()
-            
             if not items:
                 return {}
-
-            ticker_to_shares = {item.ticker: item.shares for item in items}
-            
-            correlation_ids = {}
-            for ticker, shares in ticker_to_shares.items():
-                try:
-                    correlation_id = await rabbit_service.send_message({
-                        "ticker": ticker,
-                        "days": days
-                    })
-                    correlation_ids[correlation_id] = (ticker, shares)
-                except Exception as e:
-                    print(f"❌ Error sending request for {ticker}: {e}")
-                    raise HTTPException(
-                        status_code=502, 
-                        detail=f"Error sending request for {ticker}: {e}"
-                    )
-            
             daily_values = defaultdict(float)
-            
-            async def process_response(correlation_id: str, ticker: str, shares: float):
+            for item in items:
                 try:
-                    response_data = await rabbit_service.wait_for_response(
-                        correlation_id, 
-                        timeout=30
-                    )
-                    
-                    ticker_daily_values = {}
-                    for entry in response_data:
-                        date = entry["date"]
-                        value = shares * entry["close"]
-                        ticker_daily_values[date] = value
-                    
-                    return ticker_daily_values
+                    stock_data: StockResponse = stock_service.get_history(item.ticker, days)
+                    for entry in stock_data.priceData:
+                        daily_values[entry.date] += entry.value * item.shares
                 except Exception as e:
-                    print(f"❌ Error getting response for {ticker}: {e}")
-                    raise HTTPException(
-                        status_code=502, 
-                        detail=f"Error getting data for {ticker}: {e}"
-                    )
-            
-            tasks = [
-                process_response(correlation_id, ticker, shares)
-                for correlation_id, (ticker, shares) in correlation_ids.items()
-            ]
-            
-            try:
-                results = await asyncio.gather(*tasks)
-                
-                for ticker_daily_values in results:
-                    for date, value in ticker_daily_values.items():
-                        daily_values[date] += value
-                
-                return dict(daily_values)
-                
-            except Exception as e:
-                print(f"❌ Error processing portfolio history: {e}")
-                raise HTTPException(
-                    status_code=500, 
-                    detail="Error processing portfolio history"
-                )
+                    print(f"❌ Error for {item.ticker}: {e}")
+                    raise HTTPException(status_code=502, detail=f"Error for {item.ticker}: {e}")
 
+            return dict(daily_values)
     
     async def _get_user_by_email(self, email: str, db: AsyncSession) -> User:
         result = await db.execute(select(User).filter(User.email == email))

@@ -3,7 +3,6 @@ from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
-from bot.services.db_service import DBService
 from bot.services.login_service import LoginService
 
 # Состояния логина
@@ -14,7 +13,7 @@ class LoginStates(StatesGroup):
 # Создаем router
 router = Router()
 
-def register_handlers(router: Router, db_service: DBService):
+def register_handlers(router: Router):
     
     @router.message(F.text.in_({"/start", "/login"}))
     async def start(message: Message, state: FSMContext):
@@ -33,20 +32,15 @@ def register_handlers(router: Router, db_service: DBService):
         email = data.get("email")
         password = message.text
 
-        async for session in db_service.get_session():
-            login_service = LoginService(session)
-            try:
-                telegram_id = message.from_user.id
-                user = await login_service.login_user(email, password)
-            except Exception as e:
+        login_service = LoginService()
+        try:
+            telegram_id = message.from_user.id
+            is_success = await login_service.login_user(email, password, telegram_id)
+            if is_success:
+                await message.answer("Успешный вход. Telegram ID привязан.")
+            else:
                 await message.answer("Неверные данные или email не подтверждён.")
-                await state.clear()
-                print(e)
-                return
-
-            user.telegram_id = telegram_id
-            session.add(user)
-            await session.commit()
-
-            await message.answer("Успешный вход. Telegram ID привязан.")
+        except Exception as e:
+            await message.answer("Произошла неизвестная ошибка")
             await state.clear()
+            print(e)
