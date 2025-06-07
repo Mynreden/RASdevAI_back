@@ -60,7 +60,7 @@ class AuthController:
         @self.router.get("/login/google")
         async def google_login(request: Request,
                                oauth_service: OAuthService = Depends(get_oauth_service)):
-            redirect_uri = URL(str(request.base_url) + "/api/auth/google")  # request.url_for("google_callback")
+            redirect_uri = "http://164.90.167.226:8000/api/auth/google"
             return await oauth_service.get_oauth().google.authorize_redirect(request, redirect_uri, access_type="offline", prompt="consent")
 
         @self.router.get("/google", name="google_callback")
