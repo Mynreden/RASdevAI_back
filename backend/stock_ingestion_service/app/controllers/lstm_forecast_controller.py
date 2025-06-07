@@ -20,7 +20,9 @@ class LSTMForecastController:
             service: ForecastService = Depends(get_forecast_service)
         ):
             try:
-                return await service.forecast_price(ticker, forecast_days)
+                result = await service.forecast_price(ticker, forecast_days)
+                result = LSTMForecastResponse(predicted_prices=result.predicted_prices[:forecast_days])
+                return result
             except Exception as e:
                 error_trace = traceback.format_exc()
                 raise HTTPException(status_code=500, detail=f"Error predicting for {ticker}:\n{str(e)}\n{error_trace}")
@@ -32,7 +34,9 @@ class LSTMForecastController:
             service: ForecastService = Depends(get_forecast_service)
         ):
             try:
-                return await service.forecast_price_monthly(ticker, forecast_month)
+                result = await service.forecast_price_monthly(ticker, forecast_month)
+                result = LSTMForecastResponseMonth(predicted_prices=result.predicted_prices[:forecast_month])
+                return result
             except Exception as e:
                 error_trace = traceback.format_exc()
                 raise HTTPException(status_code=500, detail=f"Error predicting for {ticker}:\n{str(e)}\n{error_trace}")

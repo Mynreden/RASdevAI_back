@@ -27,15 +27,14 @@ class ForecastService:
         self.month_lstm_history_limit_in_month = 6
 
 
-    async def forecast_price(self, ticker: str, forecast_days: int) -> LSTMForecastResponse:
+    async def forecast_price(self, ticker: str) -> LSTMForecastResponse:
         try:
             today = date.today()
-            cached = await self.redis.get_predictions(today, ticker, prefix="day", forecast=forecast_days)
+            cached = await self.redis.get_predictions(today, ticker, prefix="day")
             
             if cached:
                 print("Using cached data")
                 return LSTMForecastResponse(
-                    forecast_days=forecast_days,
                     predicted_prices=cached
                 )
             print("Fetching fresh data")
@@ -71,7 +70,7 @@ class ForecastService:
             if len(merged_days) < self.day_lstm_history_limit:
                 raise HTTPException(status_code=400, detail="Insufficient merged data")
 
-            payload = LSTMDayRequest(ticker=ticker, days=merged_days, forecast_days=forecast_days).dict()
+            payload = LSTMDayRequest(ticker=ticker, days=merged_days).dict()
             async with httpx.AsyncClient() as client:
                 response = await client.post(self.ML_SERVICE_URL, json=payload)
 
@@ -81,20 +80,19 @@ class ForecastService:
             result = response.json()
             predicted_prices = result["predicted_prices"]
 
-            await self.redis.save_predictions(today, ticker, predicted_prices, prefix="day", forecast=forecast_days)
+            await self.redis.save_predictions(today, ticker, predicted_prices, prefix="day")
 
             return LSTMForecastResponse(
-                forecast_days=forecast_days,
                 predicted_prices=predicted_prices
             )
 
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def forecast_price_monthly(self, ticker: str, forecast_months: int) -> LSTMForecastResponseMonth:
+    async def forecast_price_monthly(self, ticker: str) -> LSTMForecastResponseMonth:
         try:
             today = date.today()
-            cached = await self.redis.get_predictions(today, ticker, prefix="month", forecast=forecast_months)
+            cached = await self.redis.get_predictions(today, ticker, prefix="month")
             if cached:
                 return LSTMForecastResponseMonth(predicted_prices=cached)
 
@@ -179,8 +177,7 @@ class ForecastService:
 
             payload = {
                 "ticker": ticker,
-                "sequence": sequence,
-                "forecast_months": forecast_months
+                "sequence": sequence
             }
 
             async with httpx.AsyncClient() as client:
@@ -195,8 +192,7 @@ class ForecastService:
             result = response.json()
             predicted_prices = result["predicted_prices"]
 
-            # ✅ Cache the result
-            await self.redis.save_predictions(today, ticker, predicted_prices, prefix="month", forecast=forecast_months)
+            await self.redis.save_predictions(today, ticker, predicted_prices, prefix="month")
 
             return LSTMForecastResponseMonth(predicted_prices=predicted_prices)
 
