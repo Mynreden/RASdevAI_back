@@ -20,7 +20,7 @@ class LSTMForecastController:
             service: ForecastService = Depends(get_forecast_service)
         ):
             try:
-                result = await service.forecast_price(ticker, forecast_days)
+                result = await service.forecast_price(ticker)
                 result = LSTMForecastResponse(predicted_prices=result.predicted_prices[:forecast_days])
                 return result
             except Exception as e:
@@ -34,7 +34,7 @@ class LSTMForecastController:
             service: ForecastService = Depends(get_forecast_service)
         ):
             try:
-                result = await service.forecast_price_monthly(ticker, forecast_month)
+                result = await service.forecast_price_monthly(ticker)
                 result = LSTMForecastResponseMonth(predicted_prices=result.predicted_prices[:forecast_month])
                 return result
             except Exception as e:
