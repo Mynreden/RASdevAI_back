@@ -30,7 +30,7 @@ class ForecastService:
     async def forecast_price(self, ticker: str, forecast_days: int) -> LSTMForecastResponse:
         try:
             today = date.today()
-            cached = await self.redis.get_predictions(today, ticker, prefix="day")
+            cached = await self.redis.get_predictions(today, ticker, prefix="day", forecast=forecast_days)
             
             if cached:
                 print("Using cached data")
@@ -81,7 +81,7 @@ class ForecastService:
             result = response.json()
             predicted_prices = result["predicted_prices"]
 
-            await self.redis.save_predictions(today, ticker, predicted_prices, prefix="day")
+            await self.redis.save_predictions(today, ticker, predicted_prices, prefix="day", forecast=forecast_days)
 
             return LSTMForecastResponse(
                 forecast_days=forecast_days,
@@ -94,7 +94,7 @@ class ForecastService:
     async def forecast_price_monthly(self, ticker: str, forecast_months: int) -> LSTMForecastResponseMonth:
         try:
             today = date.today()
-            cached = await self.redis.get_predictions(today, ticker, prefix="month")
+            cached = await self.redis.get_predictions(today, ticker, prefix="month", forecast=forecast_months)
             if cached:
                 return LSTMForecastResponseMonth(predicted_prices=cached)
 
@@ -196,7 +196,7 @@ class ForecastService:
             predicted_prices = result["predicted_prices"]
 
             # ✅ Cache the result
-            await self.redis.save_predictions(today, ticker, predicted_prices, prefix="month")
+            await self.redis.save_predictions(today, ticker, predicted_prices, prefix="month", forecast=forecast_months)
 
             return LSTMForecastResponseMonth(predicted_prices=predicted_prices)
 
