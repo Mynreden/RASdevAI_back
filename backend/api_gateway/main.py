@@ -23,7 +23,7 @@ NEWS_SERVICE_URL = os.getenv("NEWS_SERVICE_URL", "http://164.90.167.226:8002/new
 LLM_SERVICE_URL=  os.getenv("LLM_SERVICE_URL", "http://164.90.167.226:8002/chat-gpt")
 COMPANY_SERVICE_URL=  os.getenv("COMPANY_SERVICE_URL", "http://164.90.167.226:8002/companies")
 FINANCIAL_SERVICE_URL=  os.getenv("FINANCIAL_SERVICE_URL", "http://164.90.167.226:8002/financial")
-LSTM_SERVICE_URL=  os.getenv("LSTM_SERVICE_URL", "http://localhost:8002/forecast")
+LSTM_SERVICE_URL=  os.getenv("LSTM_SERVICE_URL", "http://164.90.167.226:8002/forecast")
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
