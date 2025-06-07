@@ -66,6 +66,7 @@ async def proxy_user(path: str, request: Request):
         status_code=response.status_code,
         headers=dict(response.headers)
     )
+
 @app.api_route("/api/chat-gpt/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_user(path: str, request: Request):
     url = f"{LLM_SERVICE_URL}/{path}"
