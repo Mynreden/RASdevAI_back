@@ -12,3 +12,4 @@ itsdangerous
 asyncpg
 botocore
 boto3
+python-multipart
