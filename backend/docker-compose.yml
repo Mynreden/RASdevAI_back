@@ -24,3 +24,7 @@ services:
     container_name: stock_service
     ports:
       - "8002:8002"
+  
+  telegram_bot:
+    build: ./telegram_bot
+    container_name: telegram_bot

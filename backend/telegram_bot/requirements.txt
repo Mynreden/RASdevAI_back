@@ -1,0 +1,7 @@
+pydantic
+passlib
+sqlalchemy
+fastapi
+asyncio
+aiogram
+aio_pika
