@@ -5,3 +5,4 @@ fastapi
 asyncio
 aiogram
 aio_pika
+botocore

@@ -2,7 +2,7 @@ import json
 import asyncio
 import aio_pika
 from aiogram import Bot
-from bot.config import settings
+from ..config import settings
 
 class RabbitConsumerService:
     def __init__(self, bot: Bot):
