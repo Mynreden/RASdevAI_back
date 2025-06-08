@@ -6,7 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 import uvicorn
 import os
 from app.middlewares import register_middlewares
-from app.controllers import AuthController, WatchlistController, PortfolioController, AlertController, StorageController
+from app.controllers import AuthController, WatchlistController, PortfolioController, AlertController, StorageController, SubscriptionController
 from app.database import get_db_service
 from app.services import get_email_service, get_consumer_service, get_rabbit_manager, get_email_service, get_telegram_service
 from dotenv import load_dotenv
@@ -55,6 +55,8 @@ alert_controller = AlertController()
 app.include_router(alert_controller.get_router())  
 storage_controller = StorageController()
 app.include_router(storage_controller.get_router())  
+subscription_controller = SubscriptionController()
+app.include_router(subscription_controller.get_router())  
 
 if __name__ == "__main__":
     uvicorn.run("app.main:app", host="0.0.0.0", port=8001, reload=True)

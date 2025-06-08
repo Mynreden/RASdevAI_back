@@ -25,6 +25,8 @@ COMPANY_SERVICE_URL=  os.getenv("COMPANY_SERVICE_URL", "http://164.90.167.226:80
 FINANCIAL_SERVICE_URL=  os.getenv("FINANCIAL_SERVICE_URL", "http://164.90.167.226:8002/financial")
 LSTM_SERVICE_URL=  os.getenv("LSTM_SERVICE_URL", "http://164.90.167.226:8002/forecast")
 ALERTS_SERVICE_URL = os.getenv("ALERTS_SERVICE_URL", "http://164.90.167.226:8001/alerts")
+SUBSCRIPTION_SERVICE_URL=  os.getenv("SUBSCRIPTION_SERVICE_URL", "http://164.90.167.226:8001/subscription")
+STORAGE_SERVICE_URL = os.getenv("STORAGE_SERVICE_URL", "http://164.90.167.226:8001/storage")
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
@@ -208,6 +210,40 @@ async def proxy_alerts(path: str, request: Request):
         headers=dict(response.headers)
     )
 
+
+@app.api_route("/api/subscription/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def proxy_user(path: str, request: Request):
+    url = f"{SUBSCRIPTION_SERVICE_URL}/{path}"
+    async with httpx.AsyncClient() as client:
+        response = await client.request(
+            method=request.method,
+            url=url,
+            headers=request.headers.raw,
+            params=request.query_params,
+            content=await request.body()
+        )
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        headers=dict(response.headers)
+    )
+
+@app.api_route("/api/starage/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+async def proxy_user(path: str, request: Request):
+    url = f"{STORAGE_SERVICE_URL}/{path}"
+    async with httpx.AsyncClient() as client:
+        response = await client.request(
+            method=request.method,
+            url=url,
+            headers=request.headers.raw,
+            params=request.query_params,
+            content=await request.body()
+        )
+    return Response(
+        content=response.content,
+        status_code=response.status_code,
+        headers=dict(response.headers)
+    )
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
