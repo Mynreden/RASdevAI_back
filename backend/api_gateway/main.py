@@ -228,7 +228,7 @@ async def proxy_user(path: str, request: Request):
         headers=dict(response.headers)
     )
 
-@app.api_route("/api/starage/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.api_route("/api/storage/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_user(path: str, request: Request):
     url = f"{STORAGE_SERVICE_URL}/{path}"
     async with httpx.AsyncClient() as client:

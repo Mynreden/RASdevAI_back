@@ -10,3 +10,6 @@ authlib
 email-validator
 itsdangerous
 asyncpg
+botocore
+boto3
+python-multipart

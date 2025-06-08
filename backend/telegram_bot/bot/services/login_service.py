@@ -2,7 +2,7 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from bot.config import settings
+from ..config import settings
 import httpx
 
 class LoginService:

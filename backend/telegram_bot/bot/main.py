@@ -2,9 +2,9 @@ import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from bot.config import settings
-from bot.handlers import BotHandler
-from bot.services import RabbitConsumerService
+from .config import settings
+from .handlers import BotHandler
+from .services import RabbitConsumerService
 
 async def main():
     bot = Bot(token=settings.TELEGRAM_TOKEN)
@@ -14,7 +14,6 @@ async def main():
     bot_handler = BotHandler()
     dp.include_router(bot_handler.router)
 
-    # RabbitMQ consumer
     rabbit_service = RabbitConsumerService(bot)
     rabbit_task = asyncio.create_task(rabbit_service.start_consuming())
 

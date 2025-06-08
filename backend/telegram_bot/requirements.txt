@@ -1,0 +1,10 @@
+pydantic
+passlib
+sqlalchemy
+fastapi
+asyncio
+aiogram
+aio_pika
+botocore
+pydantic_settings
+httpx
