@@ -22,9 +22,19 @@ class PricePredictionRedis:
     def __init__(self, redis: TTLRedis):
         self.redis = redis
 
-    def _key(self, predict_date: Union[str, date], ticker: str, prefix: str = "day", forecast: int = 1) -> str:
-        date_str = predict_date if isinstance(predict_date, str) else predict_date.isoformat()
-        return f"predictions:{prefix}:{date_str}:{ticker.upper()}:{forecast}"
+    def _key(self, predict_date: Optional[Union[str, date]] = None, ticker: Optional[str] = None,
+            prefix: Optional[str] = "day", forecast: Optional[int] = None) -> str:
+        date_str = (
+            predict_date if isinstance(predict_date, str)
+            else predict_date.isoformat() if predict_date
+            else "*"
+        )
+        ticker_str = ticker.upper() if ticker else "*"
+        prefix_str = prefix if prefix else "*"
+        forecast_str = str(forecast) if forecast is not None else "*"
+        
+        return f"predictions:{prefix_str}:{date_str}:{ticker_str}:{forecast_str}"
+
 
     async def save_predictions(self, predict_date: date, ticker: str, prices: List[float], prefix="day", forecast: int = 1) -> None:
         key = self._key(predict_date, ticker, prefix=prefix, forecast=forecast)
@@ -39,15 +49,11 @@ class PricePredictionRedis:
         return None
 
     async def clear_predictions(self, ticker: Optional[str] = None, prefix: Optional[str] = None) -> int:
-        pattern = "predictions:*"
-        if prefix and ticker:
-            pattern = f"predictions:{prefix}:*:{ticker.upper()}:*"
-        elif prefix:
-            pattern = f"predictions:{prefix}:*"
-        elif ticker:
-            pattern = f"predictions:*:{ticker.upper()}:*"
-
-        keys = await self.redis.keys(pattern)
+        pattern = self._key(predict_date=None, ticker=ticker, prefix=prefix, forecast=None)
+        
+        keys = []
+        async for key in self.redis.scan_iter(match=pattern):
+            keys.append(key)
         if keys:
             await self.redis.delete(*keys)
         return len(keys)
