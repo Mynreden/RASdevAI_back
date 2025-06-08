@@ -6,3 +6,4 @@ asyncio
 aiogram
 aio_pika
 botocore
+pydantic_settings
