@@ -10,3 +10,4 @@ authlib
 email-validator
 itsdangerous
 asyncpg
+botocore

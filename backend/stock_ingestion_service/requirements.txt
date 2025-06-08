@@ -9,4 +9,4 @@ openai
 itsdangerous
 aio-pika
 asyncpg
-jose
+python-jose
