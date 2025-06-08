@@ -38,6 +38,20 @@ class PricePredictionRedis:
             return json.loads(result)
         return None
 
+    async def clear_predictions(self, ticker: Optional[str] = None, prefix: Optional[str] = None) -> int:
+        pattern = "predictions:*"
+        if prefix and ticker:
+            pattern = f"predictions:{prefix}:*:{ticker.upper()}:*"
+        elif prefix:
+            pattern = f"predictions:{prefix}:*"
+        elif ticker:
+            pattern = f"predictions:*:{ticker.upper()}:*"
+
+        keys = await self.redis.keys(pattern)
+        if keys:
+            await self.redis.delete(*keys)
+        return len(keys)
+    
     async def close(self):
         await self.redis.aclose()
 
