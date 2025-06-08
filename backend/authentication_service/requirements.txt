@@ -11,3 +11,4 @@ email-validator
 itsdangerous
 asyncpg
 botocore
+boto3
