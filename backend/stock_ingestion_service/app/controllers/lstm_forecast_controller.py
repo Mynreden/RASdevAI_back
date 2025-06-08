@@ -1,3 +1,4 @@
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -41,5 +42,18 @@ class LSTMForecastController:
                 error_trace = traceback.format_exc()
                 raise HTTPException(status_code=500, detail=f"Error predicting for {ticker}:\n{str(e)}\n{error_trace}")
         
+        @self.router.get("/clear", response_model=int)
+        async def clear_forecast(
+            ticker: Optional[str] = Query(None),
+            prefix: Optional[str] = Query(None),
+            service: ForecastService = Depends(get_forecast_service)
+        ):
+            try:
+                result = await service.clear_predictions(ticker=ticker, prefix=prefix)
+                return result
+            except Exception as e:
+                error_trace = traceback.format_exc()
+                raise HTTPException(status_code=500, detail=f"Error clearing forecast:\n{str(e)}\n{error_trace}")
+    
     def get_router(self):
         return self.router

@@ -1,3 +1,4 @@
+from typing import Optional, Union
 import httpx
 from datetime import datetime, timedelta, date
 from fastapi import HTTPException, Depends
@@ -89,6 +90,26 @@ class ForecastService:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+    async def clear_predictions(
+        self,
+        prefix: Optional[str] = None,
+        ticker: Optional[str] = None,
+        predict_date: Optional[Union[str, date]] = None
+    ) -> int:
+        if prefix:
+            pattern = f"predictions:{prefix}:*"
+        if predict_date:
+            date_str = predict_date if isinstance(predict_date, str) else predict_date.isoformat()
+            pattern = f"predictions:{prefix or '*'}:{date_str}:*"
+        if ticker:
+            pattern = f"predictions:{prefix or '*'}:{date_str if predict_date else '*'}:{ticker.upper()}*"
+
+        keys = await self.redis.keys(pattern)
+        if keys:
+            print(f"Deleting {len(keys)} keys")
+            await self.redis.delete(*keys)
+        return len(keys)
+    
     async def forecast_price_monthly(self, ticker: str) -> LSTMForecastResponseMonth:
         try:
             today = date.today()
