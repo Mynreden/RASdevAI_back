@@ -8,7 +8,7 @@ from app.middlewares import register_middlewares
 from app.controllers import StockController, NewsController, LLMController, CompanyController, FinancialDataController, LSTMForecastController
 from dotenv import load_dotenv
 from .database import DBService
-from .core import ConfigService, get_config_service
+from .core import ConfigService, get_config_service, setup_custom_openapi
 from .models import Base
 from app.services import RabbitService, get_rabbit_service
 import os
@@ -34,6 +34,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan, title="RASdevAI Stock Service")
 # midlewares regustration
 register_middlewares(app)
+setup_custom_openapi(app)
 
 # controller registratiom
 stock_controller = StockController()

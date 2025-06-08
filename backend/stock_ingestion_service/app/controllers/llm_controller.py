@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from typing import Optional
 import json
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -26,7 +26,9 @@ class LLMController:
         async def chat_with_gpt(request: LLMPromptRequest, http_request: Request,
                 redis: PricePredictionRedis = Depends(get_redis_client),
                 db: AsyncSession = Depends(get_db)):
-            email = http_request.headers.get("X-User-Email", "sdsdfs")
+            email = http_request.state.user_email
+            if not email:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
 
             history = await self.load_history(email, redis)
             print("History: ", history)
@@ -57,6 +59,19 @@ class LLMController:
                 return reply
             except Exception as e:
                 raise HTTPException(status_code=500, detail=f"Ошибка при обращении к GPT: {str(e)}")
+    
+        @self.router.delete("/refresh", response_model=dict)
+        async def refresh_history(http_request: Request, redis: PricePredictionRedis = Depends(get_redis_client)):
+            email = http_request.state.user_email
+            if not email:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
+
+            try:
+                await redis.redis.delete(f"user_history:{email}")
+                return {"detail": "История успешно сброшена"}
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Ошибка при сбросе истории: {str(e)}")
+
 
     async def load_history(self, user_email: str,
                 redis: PricePredictionRedis = Depends(get_redis_client)) -> list:
@@ -198,6 +213,12 @@ class LLMController:
             "\"I am an AI assistant specifically designed for RASdevAI stock application. I can only help with finance and stock-related questions.\"\n\n"
             "3. Always provide helpful, accurate financial information when the question is finance-related.\n"
             "4. If you're unsure whether a question is finance-related, err on the side of caution and use the standard response.\n\n"
+            "STYLE AND FORMAT RULES:\n"
+            "- Be brief and to the point (no long generic text).\n"
+            "- Give a clear, simple financial opinion or recommendation.\n"
+            "- Highlight key financial metrics only if relevant to the question.\n"
+            "- Avoid repeating obvious or general advice.\n"
+            "- Write in a natural and confident tone.\n\n"
             "Remember: You are part of the RASdevAI stock application ecosystem."
         )
         base_content += (
