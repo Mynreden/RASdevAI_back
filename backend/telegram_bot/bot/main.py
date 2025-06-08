@@ -14,7 +14,6 @@ async def main():
     bot_handler = BotHandler()
     dp.include_router(bot_handler.router)
 
-    # RabbitMQ consumer
     rabbit_service = RabbitConsumerService(bot)
     rabbit_task = asyncio.create_task(rabbit_service.start_consuming())
 
