@@ -1,1 +1,1 @@
-from .dependency import get_db
+from .dependency import get_db, DBService, get_db_service

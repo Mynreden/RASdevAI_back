@@ -63,32 +63,7 @@ class StockService:
         )
         result = await self.db.execute(stmt)
         return result.scalars().all()
-        # Создаем CTE для рейтинга строк
-        row_numbered = (
-            select(
-                StockPrice.id,
-                func.row_number().over(
-                    partition_by=StockPrice.company_id,
-                    order_by=StockPrice.date.desc()
-                ).label('row_num')
-            )
-            .where(StockPrice.company_id.in_(company_ids))
-            .cte('row_numbered')
-        )
-        
-        # Выбираем записи с нужными row_num, соединяя с основной таблицей
-        stmt = (
-            select(StockPrice)
-            .join(
-                row_numbered,
-                StockPrice.id == row_numbered.c.id
-            )
-            .where(row_numbered.c.row_num <= days)
-            .order_by(StockPrice.company_id, StockPrice.date.asc())
-        )
-        
-        result = await self.db.execute(stmt)
-        return result.scalars().all()
+
     
     async def fetch_company_info(self, company_ids: list[int]) -> list[Company]:
         stmt = select(Company).where(Company.id.in_(company_ids))

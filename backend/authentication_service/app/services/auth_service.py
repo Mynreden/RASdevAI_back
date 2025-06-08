@@ -65,7 +65,8 @@ class AuthService:
             email=user.email,
             hashed_password=hashed_pwd,
             auth_provider="local",
-            email_verified=False
+            email_verified=False,
+            profile_pic="https://rasdevai.fra1.cdn.digitaloceanspaces.com/users/default_profile_image.jpg"
         )
         self.db.add(new_user)
         await self.db.commit()
@@ -104,7 +105,8 @@ class AuthService:
     
     async def telegram_login(self, email: str, password: str, telegram_id: int) -> Token:
         token = await self.login_user(email=email, password=password)
-        user = token.user
+        result = await self.db.execute(select(User).where(User.id == token.user.id))
+        user = result.scalars().first()
         user.telegram_id = telegram_id
         self.db.add(user)
         await self.db.commit()

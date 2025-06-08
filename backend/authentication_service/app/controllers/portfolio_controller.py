@@ -8,7 +8,7 @@ import httpx
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.database import get_db
-from ..services import RabbitService, get_rabbit_service, StockService, get_stock_service
+from ..services import StockService, get_stock_service
 from ..core import ConfigService, get_config_service
 from ..models import User, PortfolioItem
 from ..schemas import PortfolioItemCreate, PortfolioItemResponse, StockResponse

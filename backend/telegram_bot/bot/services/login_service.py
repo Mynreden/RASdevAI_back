@@ -2,16 +2,15 @@ from passlib.context import CryptContext
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from bot.models import User  # импорт твоей модели User
 from bot.config import settings
 import httpx
 
 class LoginService:
     def __init__(self):
-        self.auth_service_url = settings.AUTH_SERVICE_URL
+        self.auth_service_url = settings.SERVICE_URL
 
     async def login_user(self, email: str, password: str, telegram_id: int) -> bool:
-        url = f"{self.auth_service_url}/telegram_login"
+        url = f"{self.auth_service_url}/api/auth/telegram_login"
         payload = {
             "email": email,
             "password": password,

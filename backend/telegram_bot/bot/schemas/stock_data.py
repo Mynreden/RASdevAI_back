@@ -21,3 +21,7 @@ class StocksFromRabbit(BaseModel):
     close: float
     volume: float
     ticker: str
+
+class StockPriceRequest(BaseModel):
+    ticker: str
+    days: int

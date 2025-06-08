@@ -63,7 +63,7 @@ class AuthController:
         @self.router.post("/telegram_login")
         async def telegram_login(request: TelegramLoginRequest = Body(...), 
                         db: AsyncSession = Depends(get_db),                           
-                        auth_service: AuthService = Depends(get_auth_service)) -> str:
+                        auth_service: AuthService = Depends(get_auth_service)) -> Token:
             email = request.email
             password = request.password
             telegram_id = request.telegram_id
