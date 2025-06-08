@@ -160,7 +160,13 @@ class AuthService:
 
         access_token = self.create_access_token({"sub": user.email})
         refresh_token = self.create_refresh_token({"sub": user.email})
-        return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer", user=UserOut(id=user.id, username=user.username, email=email,auth_provider=user.auth_provider, is_active=user.is_active))
+        return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer", user=UserOut(id=user.id, 
+                                                                                                               username=user.username, 
+                                                                                                               email=email,
+                                                                                                               auth_provider=user.auth_provider, 
+                                                                                                               is_active=user.is_active, 
+                                                                                                               profile_pic=user.profile_pic,
+                                                                                                               subscription_type=user.subscription_type))
     
 
 def get_auth_service(config_service: ConfigService = Depends(get_config_service), 
