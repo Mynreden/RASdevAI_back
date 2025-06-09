@@ -168,6 +168,12 @@ class AuthService:
                                                                                                                profile_pic=user.profile_pic,
                                                                                                                subscription_type=user.subscription_type))
     
+    async def get_user_info(self, email: str) -> Optional[UserOut]:
+        result = await self.db.execute(select(User).where(User.email == email))
+        user = result.scalars().first()
+        if user:
+            return UserOut(id=user.id, username=user.username, email=user.email, auth_provider=user.auth_provider, is_active=user.is_active, profile_pic=user.profile_pic, subscription_type=user.subscription_type)
+        return None
 
 def get_auth_service(config_service: ConfigService = Depends(get_config_service), 
                     db: AsyncSession = Depends(get_db)) -> AuthService:

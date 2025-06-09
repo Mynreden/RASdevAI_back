@@ -180,5 +180,17 @@ class AuthController:
                 """
             )
 
+        @self.router.get("/user-info")
+        async def user_info(request: Request,
+                            db: AsyncSession = Depends(get_db),
+                            auth_service: AuthService = Depends(get_auth_service)):
+            email = request.state.user_email
+            if not email:
+                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not authenticated")
+            user_info = await auth_service.get_user_info(email)
+            if not user_info:
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+            return user_info
+
     def get_router(self):
         return self.router

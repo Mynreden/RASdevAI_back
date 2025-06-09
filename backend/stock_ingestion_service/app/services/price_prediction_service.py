@@ -40,7 +40,7 @@ class ForecastService:
                 )
             print("Fetching fresh data")
             company_id = await self._get_company_id(ticker)
-            price_records = await self.stock_service.fetch_price_data([company_id], self.day_lstm_history_limit * 2)
+            price_records = await self.stock_service.fetch_price_data([company_id], self.day_lstm_history_limit * 3)
 
             if not price_records or len(price_records) < self.day_lstm_history_limit:
                 raise HTTPException(status_code=400, detail="Not enough price data")
