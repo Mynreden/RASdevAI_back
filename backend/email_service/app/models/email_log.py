@@ -15,4 +15,6 @@ class EmailLog(BaseModel, Base):
     bcc = Column(ARRAY(String), nullable=True)
     attachments = Column(ARRAY(String), nullable=True)
     status = Column(String, default="sent")  # sent | failed
+    error = Column(String, nullable=True)  # краткое описание ошибки
+    traceback = Column(Text, nullable=True)  # полный traceback
     created_at = Column(DateTime, default=datetime.datetime.utcnow)

@@ -3,6 +3,7 @@ import aiosmtplib
 from email.message import EmailMessage
 import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
+import traceback
 
 from ..database import get_db
 from ..core import ConfigService, get_config_service
@@ -32,6 +33,7 @@ class EmailSenderService:
 
         status = "sent"
         error_message = None
+        traceback_str = None
 
         try:
             await aiosmtplib.send(
@@ -48,7 +50,7 @@ class EmailSenderService:
             print(f"❌ Failed to send email to {email_data.email}: {e}")
             status = "failed"
             error_message = str(e)
-
+            traceback_str = traceback.format_exc()
         # Сохраняем лог отправки
         email_log = EmailLog(
             email=email_data.email,
@@ -57,7 +59,9 @@ class EmailSenderService:
             cc=email_data.cc,
             bcc=email_data.bcc,
             attachments=email_data.attachments,
-            status=status,
+            status=status,            
+            error=error_message,
+            traceback=traceback_str,
             created_at=datetime.datetime.utcnow(),
         )
 
