@@ -85,7 +85,11 @@ class AuthController:
                                        request: Request = None,
                                         redis: TTLRedis = Depends(get_redis_client)):
             email: str = request.state.user_email
-
+            if not email:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="User not authenticated"
+                )
             secret_key = config_service.get("SECRET_KEY")
             bot_username = config_service.get("TELEGRAM_BOT_USERNAME", "RASdevAI_SA_bot")
 
