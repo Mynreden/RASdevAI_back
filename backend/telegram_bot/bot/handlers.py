@@ -18,7 +18,9 @@ class BotHandler:
         self.stock_service = StockService()
 
         # Регистрируем все обработчики
-        self.router.message.register(self.start_handler, F.text.in_({"/start", "/login"}))
+        self.router.message.register(self.start_handler, F.text.startswith("/start"))
+        self.router.message.register(self.start_handler, F.text.startswith("/login"))
+
         self.router.message.register(self.email_entered, LoginStates.waiting_for_email)
         self.router.message.register(self.password_entered, LoginStates.waiting_for_password)
 
@@ -31,8 +33,19 @@ class BotHandler:
 
 
     async def start_handler(self, message: Message, state: FSMContext):
-        await message.answer("Введите email:")
-        await state.set_state(LoginStates.waiting_for_email)
+        print(message.text)
+        parts = message.text.split(" ", 1)
+        if len(parts) == 1:
+            await message.answer("Введите email:")
+            await state.set_state(LoginStates.waiting_for_email)
+        else:
+            token = parts[1]
+            telegram_id = message.from_user.id
+            success = await self.login_service.login_with_token(token, telegram_id)
+            if success:
+                await message.answer("Успешный вход через QR-token 🎉", reply_markup=self.main_menu())
+            else:
+                await message.answer("Неверный или просроченный токен ❌")
 
     async def email_entered(self, message: Message, state: FSMContext):
         await state.update_data(email=message.text)

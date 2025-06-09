@@ -31,3 +31,19 @@ class LoginService:
             except httpx.RequestError as e:
                 print("Request failed:", repr(e))
                 return False
+            
+    async def login_with_token(self, token: str, telegram_id: int) -> bool:
+        url = f"{self.auth_service_url}/api/auth/telegram-qr-login"
+        params = {
+            "token": token,
+            "telegram_id": telegram_id
+        }
+        async with httpx.AsyncClient() as client:
+            try:
+                response = await client.get(url, params=params)
+                print("Token Login Status Code:", response.status_code)
+                print("Token Login Response Body:", response.text)
+                return response.status_code == 200
+            except httpx.RequestError as e:
+                print("Token login request failed:", repr(e))
+                return False

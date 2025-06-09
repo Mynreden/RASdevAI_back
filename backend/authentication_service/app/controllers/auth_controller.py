@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request, Body
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Body, Query
 from fastapi.responses import HTMLResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.core import get_config_service, ConfigService
@@ -8,6 +9,14 @@ from app.schemas import UserCreate, Token, PasswordChange, RefreshTokenRequest, 
 import logging
 from typing import Dict
 from starlette.datastructures import URL
+import qrcode
+import io
+from datetime import datetime, timedelta
+from jose import jwt, JWTError
+from sqlalchemy import select
+from ..models import User
+from ..redis import TTLRedis, get_redis_client
+import uuid
 
 
 class AuthController:
@@ -70,6 +79,64 @@ class AuthController:
             if not email or not password or not telegram_id:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email, password and telegram_id required")
             return await auth_service.telegram_login(email, password, telegram_id)
+
+        @self.router.get("/telegram-qr")
+        async def generate_telegram_qr(config_service: ConfigService = Depends(get_config_service), 
+                                       request: Request = None,
+                                        redis: TTLRedis = Depends(get_redis_client)):
+            email: str = request.state.user_email
+
+            secret_key = config_service.get("SECRET_KEY")
+            bot_username = config_service.get("TELEGRAM_BOT_USERNAME", "RASdevAI_SA_bot")
+
+            payload = {
+                "sub": email,
+                "exp": datetime.utcnow() + timedelta(hours=1)
+            }
+            token = jwt.encode(payload, secret_key, algorithm="HS256")
+
+            session_code = uuid.uuid4().hex[:8]
+            await redis.set(session_code, token)
+
+            tg_link = f"t.me/{bot_username}?start={session_code}"
+
+            img = qrcode.make(tg_link, version=None, error_correction=qrcode.constants.ERROR_CORRECT_M)
+            buffer = io.BytesIO()
+            img.save(buffer, format="PNG")
+            buffer.seek(0)
+
+            return StreamingResponse(buffer, media_type="image/png")
+
+        @self.router.get("/telegram-qr-login")
+        async def login_telegram_qr(token: str = Query(...),
+                                    telegram_id: int = Query(...),
+                                    config_service: ConfigService = Depends(get_config_service),     
+                                    db: AsyncSession = Depends(get_db),
+                                    redis: TTLRedis = Depends(get_redis_client)):
+            secret_key = config_service.get("SECRET_KEY")
+
+            try:
+                token_code = await redis.get(token)
+                payload = jwt.decode(token_code, secret_key, algorithms=["HS256"])
+                email = payload.get("sub")
+                if not email:
+                    raise HTTPException(status_code=400, detail="Invalid token: no email")
+
+                result = await db.execute(select(User).where(User.email == email))
+                user = result.scalars().first()
+
+                if not user:
+                    raise HTTPException(status_code=404, detail="User not found")
+
+                user.telegram_id = telegram_id
+                db.add(user)
+                await db.commit()
+
+                return "Telegram ID linked successfully"
+            except JWTError:
+                raise HTTPException(status_code=400, detail="Invalid token")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Unexpected error: {str(e)}")
         
         @self.router.get("/login/google")
         async def google_login(request: Request,
