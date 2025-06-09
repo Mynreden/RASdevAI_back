@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Body, Query
 from fastapi.responses import HTMLResponse
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.core import get_config_service, ConfigService
@@ -42,7 +42,8 @@ class AuthController:
         async def verify_email(token: str, 
                                db: AsyncSession = Depends(get_db),                           
                                auth_service: AuthService = Depends(get_auth_service)):
-            return await auth_service.verify_email(token)
+            await auth_service.verify_email(token)
+            return RedirectResponse(url="https://rasdevai.vercel.app/signin?verified=True")
 
         @self.router.post("/login", response_model=Token)
         async def login(request: LoginRequest = Body(...), 
