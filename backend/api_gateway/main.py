@@ -72,7 +72,7 @@ async def proxy_user(path: str, request: Request):
 @app.api_route("/api/chat-gpt/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 async def proxy_user(path: str, request: Request):
     url = f"{LLM_SERVICE_URL}/{path}"
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
         response = await client.request(
             method=request.method,
             url=url,
