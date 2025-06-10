@@ -172,12 +172,14 @@ class LLMController:
                     )
                     for sp in reversed(stock_data)  # чтобы данные шли по возрастанию даты
                 ]
-
+                current_price = stock_data[-1].close
+                first_price = stock_data[-2].close
+                share_change = round((current_price - first_price) / current_price * 100, 2)
                 stock_response = StockResponse(
                     logoUrl=company.image_url or "",
                     companyName=company.shortname,
                     ticker=company.ticker,
-                    shareChange=((stock_data[0].close - stock_data[-1].close) / stock_data[-1].close) * 100,
+                    shareChange=share_change,
                     currentPrice=stock_data[0].close,
                     priceData=price_data,
                 )

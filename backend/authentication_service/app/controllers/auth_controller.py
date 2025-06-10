@@ -17,7 +17,7 @@ from sqlalchemy import select
 from ..models import User
 from ..redis import TTLRedis, get_redis_client
 import uuid
-
+import base64
 
 class AuthController:
     def __init__(self):
@@ -109,8 +109,12 @@ class AuthController:
             buffer = io.BytesIO()
             img.save(buffer, format="PNG")
             buffer.seek(0)
+            img_base64 = base64.b64encode(buffer.read()).decode('utf-8')
 
-            return StreamingResponse(buffer, media_type="image/png")
+            return {
+                "telegram_link": tg_link,
+                "qr_code_base64": f"data:image/png;base64,{img_base64}"
+            }
 
         @self.router.get("/telegram-qr-login")
         async def login_telegram_qr(token: str = Query(...),
