@@ -8,6 +8,7 @@ from sqlalchemy.orm import aliased
 import openai
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
+import yaml
 
 from ..database import get_db
 from ..core import get_config_service
@@ -162,7 +163,7 @@ class LLMController:
             )
             stock_result = await db.execute(stock_stmt)
             stock_data = stock_result.scalars().all()
-
+            stock_data = sorted(stock_data, key=lambda x: x.date)
             # Преобразование stock_data в StockResponse (берём последние цены и создаём мини-график)
             if stock_data:
                 price_data = [
@@ -200,9 +201,9 @@ class LLMController:
 
     def build_system_prompt(self, company_data: Optional[RecentCompanyDataResponse]) -> dict:
         base_content = (
-            "You are an AI assistant for RASdevAI stock application. You are a financial expert assistant.\n"
-            "IMPORTANT RULES:\n"
-            "1. You MUST ONLY answer questions related to:\n"
+            "You are an AI assistant for the RASdevAI stock application. Your role is to provide expert-level assistance in finance, economics, and related technical topics.\n\n"
+            "✅ ALLOWED TOPICS:\n"
+            "You may answer any question clearly related to:\n"
             "- Stock market and trading\n"
             "- Financial analysis and investment\n"
             "- Portfolio management\n"
@@ -210,19 +211,22 @@ class LLMController:
             "- Financial planning and advice\n"
             "- Cryptocurrency and digital assets\n"
             "- Banking and financial services\n"
-            "- Market data interpretation\n\n"
-            "2. For ANY question that is NOT related to finance, stocks, or economics, you MUST respond EXACTLY with:\n"
+            "- Market data interpretation\n"
+            "- Technical implementation of stock-related data, APIs, or data formatting\n"
+            "🌐 LANGUAGE SUPPORT:\n"
+            "- You must support both Russian, English and Kazakh.\n"
+            "- Answer in the user's language, as long as the topic is relevant.\n\n"
+            "❌ If a question is clearly unrelated to finance, economics, or technical aspects of stock data processing, respond with:\n"
             "\"I am an AI assistant specifically designed for RASdevAI stock application. I can only help with finance and stock-related questions.\"\n\n"
-            "3. Always provide helpful, accurate financial information when the question is finance-related.\n"
-            "4. If you're unsure whether a question is finance-related, err on the side of caution and use the standard response.\n\n"
-            "STYLE AND FORMAT RULES:\n"
-            "- Be brief and to the point (no long generic text).\n"
-            "- Give a clear, simple financial opinion or recommendation.\n"
-            "- Highlight key financial metrics only if relevant to the question.\n"
-            "- Avoid repeating obvious or general advice.\n"
-            "- Write in a natural and confident tone.\n\n"
-            "Remember: You are part of the RASdevAI stock application ecosystem."
+            "🎯 STYLE AND TONE:\n"
+            "- Be brief and to the point.\n"
+            "- Provide direct financial insight or technical clarification.\n"
+            "- Highlight only relevant metrics or code snippets.\n"
+            "- Avoid vague, generic, or motivational language.\n"
+            "- Use a confident and natural tone.\n\n"
+            "Remember: You are part of the RASdevAI stock application ecosystem. Your job is to help users understand financial topics and interact with stock-related data effectively."
         )
+
         base_content += (
             "\n\nYou should behave like a real financial analyst. When asked if buying a stock is a good idea, always analyze:\n"
             "- Whether the company is fundamentally strong\n"
@@ -233,7 +237,7 @@ class LLMController:
         )
 
         if company_data:
-            base_content += f"\n\nRecent data for company:\n{self.make_readable_text(company_data)}"
+            base_content += f"\n\nRecent data for company:\n{yaml.dump(company_data.model_dump(), allow_unicode=True, sort_keys=False)}"
         print(base_content)
 
         return {"role": "system", "content": base_content}

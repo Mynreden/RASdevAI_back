@@ -10,3 +10,4 @@ itsdangerous
 aio-pika
 asyncpg
 python-jose
+pyyaml
