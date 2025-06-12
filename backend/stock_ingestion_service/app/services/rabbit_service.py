@@ -49,7 +49,7 @@ class RabbitService:
                 await asyncio.sleep(2 ** retries)
 
     async def process_queue1_message(self, message: aio_pika.IncomingMessage):
-        # async with message.process():
+        async with message.process():
             try:
                 payload = json.loads(message.body)
                 data = NewsFromRabbit(**payload)
