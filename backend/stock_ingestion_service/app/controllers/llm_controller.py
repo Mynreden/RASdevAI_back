@@ -181,7 +181,7 @@ class LLMController:
                     companyName=company.shortname,
                     ticker=company.ticker,
                     shareChange=share_change,
-                    currentPrice=stock_data[0].close,
+                    currentPrice=current_price,
                     priceData=price_data,
                 )
             else:
