@@ -66,7 +66,7 @@ class RabbitService:
                         negative=data.sentiment_probs.negative,
                     )
                     session.add(news)
-                    #await session.commit()
+                    await session.commit()
                 print(f"✅ Processed message from {self.queue1_name}")
             except Exception as e:
                 print(f"❌ Failed to process message from {self.queue1_name}: {e}")
